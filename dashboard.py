@@ -3,6 +3,9 @@ import numpy as np
 import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
+import geopandas as gpd
+import folium
+from streamlit_folium import st_folium
 
 from babel.numbers import format_currency
 from datetime import datetime
@@ -31,7 +34,7 @@ def create_product_sales_df(df):
     
     return product_sales_df
 
-all_data_df = pd.read_csv('all_data.csv')
+sales_data_df = pd.read_csv('sales_data.csv')
 
 datetime_columns = [
     "order_purchase_timestamp",
@@ -42,22 +45,22 @@ datetime_columns = [
     "shipping_limit_date"
 ]
 
-all_data_df.sort_values(by='order_purchase_timestamp', inplace=True).reset_index(inplace=True)
+sales_data_df.sort_values(by='order_purchase_timestamp', inplace=True).reset_index(inplace=True)
 
 for col in datetime_columns:
-    all_data_df[col] = pd.to_datetime(all_data_df[col], errors='coerce')
+    sales_data_df[col] = pd.to_datetime(sales_data_df[col], errors='coerce')
 
 # Komponen filter waktu
-min_date = all_data_df['order_purchase_timestamp'].min().date()
-max_date = all_data_df['order_purchase_timestamp'].max().date()
+min_date = sales_data_df['order_purchase_timestamp'].min().date()
+max_date = sales_data_df['order_purchase_timestamp'].max().date()
 
 st.sidebar.header("Periode Penjualan")
 start_date = st.sidebar.date_input("Start Date", min_value=min_date, max_value=max_date, value=min_date)
 end_date = st.sidebar.date_input("End Date", min_value=min_date, max_value=max_date, value=max_date)
 
 # Simpan data terfilter yang akan digunakan
-filtered_df = all_data_df[(all_data_df['order_purchase_timestamp'].dt.date >= start_date) & 
-                          (all_data_df['order_purchase_timestamp'].dt.date <= end_date)].copy()
+filtered_df = sales_data_df[(sales_data_df['order_purchase_timestamp'].dt.date >= start_date) & 
+                          (sales_data_df['order_purchase_timestamp'].dt.date <= end_date)].copy()
 
 
 # Buat DataFrame untuk analisis tren penjualan bulanan
