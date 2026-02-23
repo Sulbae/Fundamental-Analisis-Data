@@ -62,6 +62,8 @@ max_date = sales_data_df['order_purchase_timestamp'].max().date()
 
 ## Top Bar Filter
 with st.container():
+    st.markdown('<div class="top-bar" style="text-align: bottom;">', unsafe_allow_html=True)
+
     col_logo, col_space_top_bar, col_filter = st.columns([1, 2, 3])
 
     # Logo
@@ -95,6 +97,7 @@ with st.container():
         if start_date > end_date:
             st.error("Start Date tidak boleh lebih besar dari End Date!")
             st.stop()
+        st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("---")
 
