@@ -61,15 +61,51 @@ min_date = sales_data_df['order_purchase_timestamp'].min().date()
 max_date = sales_data_df['order_purchase_timestamp'].max().date()
 
 ## Top Bar Filter
-with st.container():
-    st.markdown('<div class="top-bar" style="text-align: bottom;">', unsafe_allow_html=True)
+st.markdown(
+    """
+    <style> 
+    .top-bar {
+        padding: 0.5rem 0 1.2rem 0;
+    }
+    
+    .logo-wrapper {
+        display: flex;
+        align-items: center;
+    }
+    
+    .logo-wrapper img {
+        display: flex;
+        align-items: flex-end;
+        width: 100%;
+        height: auto;
+    }
 
+    .date-filter {
+        display: flex;
+        align-items: flex-end;
+        gap: 1rem;
+    }
+
+    .date-filter > div {
+        display: flex;
+        flex-direction: column;
+    }
+    </style>
+    """, unsafe_allow_html=True
+)
+
+with st.container():
     col_logo, col_space_top_bar, col_filter = st.columns([1, 2, 3])
 
     # Logo
     with col_logo:
-        st.image(
-            "https://github.com/Sulbae/Fundamental-Analisis-Data/blob/4d6e16f7fbc32faa7581a9f81ac7d9c87a7c18f4/assets/pngtree-shopping-bag-icon.png?raw=true"
+        st.markdown(
+            """
+            <div class="logo-wrapper">
+                <img src="https://github.com/Sulbae/Fundamental-Analisis-Data/blob/4d6e16f7fbc32faa7581a9f81ac7d9c87a7c18f4/assets/pngtree-shopping-bag-icon.png?raw=true">
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
     # Space Top Bar
@@ -79,6 +115,8 @@ with st.container():
     # Filter
     with col_filter:
         st.markdown("### Pilih Periode Penjualan")
+
+        st.markdown('<div class="date-filter">', unsafe_allow_html=True)
 
         time1, time2 = st.columns(2)
 
@@ -93,12 +131,13 @@ with st.container():
                 "End Date", 
                 min_value=min_date, max_value=max_date, value=max_date
             )
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
         if start_date > end_date:
             st.error("Start Date tidak boleh lebih besar dari End Date!")
             st.stop()
-        st.markdown("</div>", unsafe_allow_html=True)
-
+    
 st.markdown("---")
 
 ## Simpan data terfilter yang akan digunakan
@@ -113,10 +152,17 @@ filtered_df = sales_data_df[
 def create_monthly_orders_df(df):
     monthly_orders_df = (
         df.resample(rule='M', on='order_purchase_timestamp')
-        .agg(total_orders=('order_id', 'nunique'),
-             total_sales=('sales', 'sum'))
+        .agg({
+            'order_id': 'nunique',
+            'payment_value': 'sum'
+        })
         .reset_index()
     )
+
+    monthly_orders_df.rename(columns={
+        'order_id': 'total_orders',
+        'payment_value': 'total_sales'
+    }, inplace=True)
 
     monthly_orders_df['order_purchase_timestamp'] = monthly_orders_df['order_purchase_timestamp'].dt.strftime('%m-%Y')
     
@@ -137,35 +183,41 @@ def sales_trend_viz(x, y):
     plt.close(fig)
 
 ## Visualisasi penjualan produk
-def plot_product_sales(data_df, column_y, column_x, ascending=False, title=""):
+def plot_product_sales(data_df, ascending=False, title=""):
     data = (
-        data_df.groupby(column_y)[column_x]
-        .sum()
-        .sort_values(by=column_x, ascending=ascending)
+        data_df
+        .rename(columns={'product_category_name_english': 'product_category'})
+        .groupby('product_category')
+        .size()
+        .reset_index(name='quantity')
+        .sort_values(by='quantity', ascending=ascending)
         .head(5)
-        .reset_index()
     )
 
-    fig, ax = plt.subplots(figsize=(10, 4))
+    fig, ax = plt.subplots(
+        figsize=(10, 4),
+        facecolor='none'   
+    )
     
     colors = ["#90CAF9", "#D3D3D3", "#D3D3D3", "#D3D3D3", "#D3D3D3"]
 
     sns.barplot(
         data=data,
-        x=column_x,
-        y=column_y,
+        x='quantity',
+        y='product_category',
         palette=colors,
         ax=ax
     )
 
-    ax.set_title(title, fontsize=14)
-    ax.set_xlabel('Jumlah Terjual', fontsize=12)
-    ax.set_ylabel('Kategori Produk', fontsize=12)
+    ax.set_title(title, fontsize=14, color="white")
+    ax.set_xlabel('Jumlah Terjual', fontsize=12, color="white")
+    ax.set_ylabel('Kategori Produk', fontsize=12, color="white")
     
     st.pyplot(fig)
     plt.close(fig)
 
 ## Peta distribusi lokasi users
+'''
 def create_users_map_df(customers_df, sellers_df):
     # Base map
     m = folium.Map(
@@ -207,7 +259,7 @@ def create_users_map_df(customers_df, sellers_df):
     folium.LayerControl(collapsed=False).add_to(m)
 
     return m
-
+'''
 
 # VISUALISASI CHART ----------
 ## Buat DataFrame untuk analisis tren penjualan bulanan
@@ -264,8 +316,6 @@ col1, col2 = st.columns(2)
 with col1:
     plot_product_sales(
         data_df=filtered_df,
-        column_y='product_category',
-        column_x='quantity',
         ascending=False,
         title="Produk Terlaris"
     )
@@ -273,14 +323,12 @@ with col1:
 with col2:
     plot_product_sales(
         data_df=filtered_df,
-        column_y='product_category',
-        column_x='quantity',
         ascending=True,
         title="Produk Penjualan Terendah"
     )
 
 ## Tampilkan peta distribusi users
-st.subheader("Distribusi Lokasi Users")
-st_folium(create_users_map_df(customers_df, sellers_df), height=650)
+## st.subheader("Distribusi Lokasi Users")
+## st_folium(create_users_map_df(customers_df, sellers_df), height=650)
 
 st.caption("Copyright © 2026 - Data Science")
