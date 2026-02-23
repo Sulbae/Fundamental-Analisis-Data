@@ -64,8 +64,8 @@ with st.container():
     # Logo
     with col_logo:
         st.image(
-            "",
-            height=50
+            "https://github.com/Sulbae/Fundamental-Analisis-Data/blob/4d6e16f7fbc32faa7581a9f81ac7d9c87a7c18f4/assets/pngtree-shopping-bag-icon.png?raw=true",
+            width=50
         )
 
     # Filter
