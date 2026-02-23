@@ -224,8 +224,8 @@ with st.container():
         st.metric(label="Total Orders", value=total_orders)
 
     with kpi4:
-        num_customer = filtered_df['order_id'].nunique() / filtered_df['order_purchase_timestamp'].dt.to_period('M').nunique()
-        st.metric(label="Avg. Orders per Month", value=round(avg_orders, 2))
+        num_customer = filtered_df['customer_id'].nunique()
+        st.metric(label="Total Customers", value=num_customer)
 
 with st.container():
     st.subheader("Kinerja Layanan")
