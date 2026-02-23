@@ -62,7 +62,7 @@ max_date = sales_data_df['order_purchase_timestamp'].max().date()
 
 ## Top Bar Filter
 with st.container():
-    col_logo, col_filter = st.columns([1, 5])
+    col_logo, st.markdown(" "), col_filter = st.columns([1, 2, 3])
 
     # Logo
     with col_logo:
@@ -72,12 +72,9 @@ with st.container():
 
     # Filter
     with col_filter:
-        st.markdown(
-            "<h3 style='text-align: center;'>Pilih Periode Penjualan</h3>", 
-            unsafe_allow_html=True
-        )
+        st.markdown("### Pilih Periode Penjualan")
 
-        time1, time2, apply_f = st.columns([2, 2, 1])
+        time1, time2, apply_f = st.columns([1, 1, 1])
 
         with time1:
             start_date = st.date_input(
