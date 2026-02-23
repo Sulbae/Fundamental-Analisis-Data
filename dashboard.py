@@ -1,123 +1,245 @@
+import streamlit as st
+st.set_page_config(
+    page_title="Fundamental Analisis Data", 
+    layout="wide"
+)
+
 import pandas as pd
 import numpy as np
-import streamlit as st
 import matplotlib.pyplot as plt
 import seaborn as sns
 import geopandas as gpd
 import folium
+from folium.plugins import HeatMap
 from streamlit_folium import st_folium
-
 from babel.numbers import format_currency
-from datetime import datetime
 
 sns.set_style("darkgrid")
 
+# PENGOLAHAN DATA ----------
+## sales data
+@st.cache_data
+def load_sales_data(data_path):
+    sales_data_df = pd.read_csv(data_path)
+
+    datetime_columns = [
+        "order_purchase_timestamp",
+        "order_approved_at",
+        "order_delivered_carrier_date",
+        "order_delivered_customer_date",
+        "order_estimated_delivery_date",
+        "shipping_limit_date"
+    ]
+
+    for col in datetime_columns:
+        sales_data_df[col] = pd.to_datetime(sales_data_df[col], errors='coerce')
+
+    sales_data_df.sort_values(by='order_purchase_timestamp', inplace=True)
+
+    return sales_data_df
+
+## users data
+@st.cache_data
+def load_users_data(customers_path, sellers_path):
+    customers_df = pd.read_csv(customers_path)
+    sellers_df = pd.read_csv(sellers_path)
+
+    return customers_df, sellers_df
+
+## Load data
+sales_data_df = load_sales_data('sales_data.csv')
+customers_df, sellers_df = load_users_data('customers_geo.csv', 'sellers_geo.csv')
+
+# DASHBOARD UI ----------
+st.title("Dashboard Penjualan E-Commerce")
+
+# FILTERING DATA ----------
+st.markdown("### Pilih Periode Penjualan")
+
+## Komponen filter waktu
+min_date = sales_data_df['order_purchase_timestamp'].min().date()
+max_date = sales_data_df['order_purchase_timestamp'].max().date()
+
+## Top Bar Filter
+time1, time2, apply_f = st.columns([2, 2, 1])
+
+with time1:
+    start_date = st.date_input(
+        "Start Date", 
+        min_value=min_date, max_value=max_date, value=min_date
+    )
+
+with time2:
+    end_date = st.date_input(
+        "End Date", 
+        min_value=min_date, max_value=max_date, value=max_date
+    )
+
+with apply_f:
+    if st.button("Apply Filter"):
+        if start_date > end_date:
+            st.error("Start Date harus sebelum End Date!")
+        else:
+            st.success(f"Filter berhasil diterapkan")
+
+## Simpan data terfilter yang akan digunakan
+filtered_df = sales_data_df[
+    (sales_data_df['order_purchase_timestamp'].dt.date >= start_date) & 
+    (sales_data_df['order_purchase_timestamp'].dt.date <= end_date)
+].copy()
+
+
+# HELPER FUNCTIONS ----------
+## Fungsi untuk membuat DataFrame tren penjualan bulanan
 def create_monthly_orders_df(df):
-    monthly_orders_df = df.resample(rule='M', on='order_purchase_timestamp').agg({
-        'order_id': 'nunique',
-        'sales': 'sum'
-    }).reset_index()
-    
-    monthly_orders_df.rename(columns={
-        'order_id': 'total_orders',
-        'sales': 'total_sales'
-    }, inplace=True)
+    monthly_orders_df = (
+        df.resample(rule='M', on='order_purchase_timestamp')
+        .agg(total_orders=('order_id', 'nunique'),
+             total_sales=('sales', 'sum'))
+        .reset_index()
+    )
 
     monthly_orders_df['order_purchase_timestamp'] = monthly_orders_df['order_purchase_timestamp'].dt.strftime('%m-%Y')
     
     return monthly_orders_df
 
-def create_product_sales_df(df):
-    product_sales_df = df.groupby('product_category_name_english')['quantity'].sum().reset_index()
-    product_sales_df.rename(columns={'product_category_name_english': 'product_category', 'quantity': 'total_quantity'}, inplace=True)
-    product_sales_df.sort_values(by='total_quantity', ascending=False, inplace=True)
+## Visualisasi tren penjualan bulanan
+def sales_trend_viz(x, y):
+    fig, ax = plt.subplots(figsize=(12, 5))
+
+    ax.plot(x, y, marker='o', linewidth=2, markersize=8, color="#90CAF9")
+    ax.set_title('Tren Penjualan Bulanan', fontsize=16, loc="center")
+    ax.set_xlabel('Bulan')
+    ax.set_ylabel('Total Penjualan')
+
+    plt.xticks(rotation=45)
     
-    return product_sales_df
+    st.pyplot(fig)
+    plt.close(fig)
 
-sales_data_df = pd.read_csv('sales_data.csv')
+## Visualisasi penjualan produk
+def plot_product_sales(data_df, column_y, column_x, ascending=False, title=""):
+    data = (
+        data_df.groupby(column_y)[column_x]
+        .sum()
+        .sort_values(by=column_x, ascending=ascending)
+        .head(5)
+        .reset_index()
+    )
 
-datetime_columns = [
-    "order_purchase_timestamp",
-    "order_approved_at",
-    "order_delivered_carrier_date",
-    "order_delivered_customer_date",
-    "order_estimated_delivery_date",
-    "shipping_limit_date"
-]
+    fig, ax = plt.subplots(figsize=(10, 4))
+    
+    colors = ["#90CAF9", "#D3D3D3", "#D3D3D3", "#D3D3D3", "#D3D3D3"]
 
-sales_data_df.sort_values(by='order_purchase_timestamp', inplace=True).reset_index(inplace=True)
+    sns.barplot(
+        data=data,
+        x=column_x,
+        y=column_y,
+        palette=colors,
+        ax=ax
+    )
 
-for col in datetime_columns:
-    sales_data_df[col] = pd.to_datetime(sales_data_df[col], errors='coerce')
+    ax.set_title(title, fontsize=14)
+    ax.set_xlabel('Jumlah Terjual', fontsize=12)
+    ax.set_ylabel('Kategori Produk', fontsize=12)
+    
+    st.pyplot(fig)
+    plt.close(fig)
 
-# Komponen filter waktu
-min_date = sales_data_df['order_purchase_timestamp'].min().date()
-max_date = sales_data_df['order_purchase_timestamp'].max().date()
+## Peta distribusi lokasi users
+def create_users_map_df(customers_df, sellers_df):
+    # Base map
+    m = folium.Map(
+        location=[-14.2, -51.9], 
+        zoom_start=4,
+        tiles='cartodbpositron'
+    )
 
-st.sidebar.header("Periode Penjualan")
-start_date = st.sidebar.date_input("Start Date", min_value=min_date, max_value=max_date, value=min_date)
-end_date = st.sidebar.date_input("End Date", min_value=min_date, max_value=max_date, value=max_date)
+    ## Customer Layer
+    customer_layer = folium.FeatureGroup(name='Customers')
 
-# Simpan data terfilter yang akan digunakan
-filtered_df = sales_data_df[(sales_data_df['order_purchase_timestamp'].dt.date >= start_date) & 
-                          (sales_data_df['order_purchase_timestamp'].dt.date <= end_date)].copy()
+    HeatMap(
+        data=list(zip(customers_df['geolocation_lat'], customers_df['geolocation_lng'])),
+        radius=10,
+        blur=15,
+        min_opacity=0.4,
+        gradient={0.0: 'gray', 1.0: 'blue'} # warna gray = min, blue = max
+    ).add_to(customer_layer)
+
+    customer_layer.add_to(m)
+
+    ## Seller Layer
+    seller_layer = folium.FeatureGroup(name='Sellers')
+
+    for idx, row in sellers_df.iterrows():
+        folium.CircleMarker(
+            location=[row['geolocation_lat'], row['geolocation_lng']],
+            radius=4,
+            color='#FFA500',
+            fill=True,
+            fill_color='#FFA500',
+            fill_opacity=0.7,
+            popup="Seller"
+        ).add_to(seller_layer)
+
+    seller_layer.add_to(m)
+
+    # Layer Control
+    folium.LayerControl(collapsed=False).add_to(m)
+
+    return m
 
 
-# Buat DataFrame untuk analisis tren penjualan bulanan
+# VISUALISASI CHART ----------
+## Buat DataFrame untuk analisis tren penjualan bulanan
 monthly_sales_df = create_monthly_orders_df(filtered_df)
 
-# Buat DataFrame untuk analisis produk terlaris
-product_sales_df = create_product_sales_df(filtered_df)
-
-
-# Dashboard Streamlit
-st.title("Dashboard Penjualan E-Commerce")
-
-st.subheader("Tren Penjualan")
-
-col1, col2 = st.columns(2)
+## Layout untuk menampilkan metrik
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     total_sales = monthly_sales_df['total_sales'].sum()
     st.metric(label="Total Sales", value=format_currency(total_sales, 'BRL', locale='pt_BR'))
 
 with col2:
+    avg_sales = monthly_sales_df['total_sales'].mean()
+    st.metric(label="Avg. Sales per Month", value=format_currency(avg_sales, 'BRL', locale='pt_BR'))
+
+with col3:
     total_orders = monthly_sales_df['total_orders'].sum()
     st.metric(label="Total Orders", value=total_orders)
 
-# Visualisasi tren penjualan bulanan
-def sales_trend_viz(x, y, title):
-    plt.figure(figsize=(10, 5))
-    plt.plot(x, y, marker='o', linewidth=2, markersize=8, color="#90CAF9")
-    plt.title(title)
-    plt.xlabel('Bulan')
-    plt.ylabel('Total Penjualan')
-    plt.xticks(rotation=45)
-    
-    st.pyplot(plt)
+with col4:
+    avg_orders = monthly_sales_df['total_orders'].mean()
+    st.metric(label="Avg. Orders per Month", value=round(avg_orders, 2))
 
-sales_trend_viz(monthly_sales_df['order_purchase_timestamp'], monthly_sales_df['total_sales'], title='Tren Penjualan Bulanan')
+## Tampilkan chart tren penjualan bulanan
+st.subheader("📈 Tren Penjualan")
+sales_trend_viz(monthly_sales_df['order_purchase_timestamp'], monthly_sales_df['total_sales'])
 
-# Visualisasi produk terlaris
-def top_product_viz(data_df, column_x, column_y):
-    plt.figure(figsize=(10, 5))
-    
-    colors = ["#90CAF9", "#D3D3D3", "#D3D3D3", "#D3D3D3", "#D3D3D3"]
+## Tampilkan chart produk terlaris dan terburuk
+col1, col2 = st.columns(2)
 
-    sns.barplot(
-        x=data_df[column_x],
-        y=data_df[column_y],
-        data=data_df.head(5),
-        palette=colors
+with col1:
+    plot_product_sales(
+        data_df=filtered_df,
+        column_y='product_category',
+        column_x='quantity',
+        ascending=False,
+        title="Produk Terlaris"
     )
 
-    plt.title('Top 5 Produk Terlaris', fontsize=16, loc="center")
-    plt.xlabel('Jumlah Terjual', fontsize=12)
-    plt.ylabel('Kategori Produk', fontsize=12)
-    
-    st.pyplot(plt)
+with col2:
+    plot_product_sales(
+        data_df=filtered_df,
+        column_y='product_category',
+        column_x='quantity',
+        ascending=True,
+        title="Produk Penjualan Terendah"
+    )
 
-top_product_viz(product_sales_df, column_x='total_quantity', column_y='product_category')
+## Tampilkan peta distribusi users
+st.subheader("Distribusi Lokasi Users")
+st_folium(create_users_map_df(customers_df, sellers_df), height=650)
 
-
-st.caption("Copyright © 2026.")
+st.caption("Copyright © 2026 - Data Science")
