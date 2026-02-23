@@ -54,33 +54,48 @@ customers_df, sellers_df = load_users_data('customers_geo.csv', 'sellers_geo.csv
 st.title("Dashboard Penjualan E-Commerce")
 
 # FILTERING DATA ----------
-st.markdown("### Pilih Periode Penjualan")
-
 ## Komponen filter waktu
 min_date = sales_data_df['order_purchase_timestamp'].min().date()
 max_date = sales_data_df['order_purchase_timestamp'].max().date()
 
 ## Top Bar Filter
-time1, time2, apply_f = st.columns([2, 2, 1])
+with st.container():
+    col_logo, col_filter = st.columns([1, 5])
 
-with time1:
-    start_date = st.date_input(
-        "Start Date", 
-        min_value=min_date, max_value=max_date, value=min_date
-    )
+    # Logo
+    with col_logo:
+        st.image(
+            "",
+            height=50
+        )
 
-with time2:
-    end_date = st.date_input(
-        "End Date", 
-        min_value=min_date, max_value=max_date, value=max_date
-    )
+    # Filter
+    with col_filter:
+        st.markdown("### Pilih Periode Penjualan")
 
-with apply_f:
-    if st.button("Apply Filter"):
-        if start_date > end_date:
-            st.error("Start Date harus sebelum End Date!")
-        else:
-            st.success(f"Filter berhasil diterapkan")
+        time1, time2, apply_f = st.columns([2, 2, 1])
+
+        with time1:
+            start_date = st.date_input(
+                "Start Date", 
+                min_value=min_date, max_value=max_date, value=min_date
+            )
+
+        with time2:
+            end_date = st.date_input(
+                "End Date", 
+                min_value=min_date, max_value=max_date, value=max_date
+            )
+
+        with apply_f:
+            st.markdown(" ")
+            if st.button("Apply Filter"):
+                if start_date > end_date:
+                    st.error("Start Date harus sebelum End Date!")
+                else:
+                    st.success(f"Filter berhasil diterapkan")
+
+st.markdown("---")
 
 ## Simpan data terfilter yang akan digunakan
 filtered_df = sales_data_df[
