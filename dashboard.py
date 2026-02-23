@@ -184,11 +184,11 @@ def create_sales_trend_df(df, periode: str):
     }, inplace=True)
 
     if periode == 'W':
-        sales_trend_df['order_purchase_timestamp'] = sales_trend_df['order_purchase_timestamp'].dt.strftime('Week %U-W%Y')
+        sales_trend_df['order_purchase_timestamp'] = sales_trend_df['order_purchase_timestamp'].dt.strftime('W-%U %Y')
     elif periode == 'M':
-        sales_trend_df['order_purchase_timestamp'] = sales_trend_df['order_purchase_timestamp'].dt.strftime('%b-%y')
+        sales_trend_df['order_purchase_timestamp'] = sales_trend_df['order_purchase_timestamp'].dt.strftime('%b %y')
     elif periode == 'Q':
-        sales_trend_df['order_purchase_timestamp'] = sales_trend_df['order_purchase_timestamp'].dt.to_period('Q').dt.strftime('Q%q-%Y')
+        sales_trend_df['order_purchase_timestamp'] = sales_trend_df['order_purchase_timestamp'].dt.to_period('Q').dt.strftime('Q%q %Y')
     elif periode == 'Y':
         sales_trend_df['order_purchase_timestamp'] = sales_trend_df['order_purchase_timestamp'].dt.strftime('%Y')
     else:
