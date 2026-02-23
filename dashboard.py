@@ -78,7 +78,7 @@ with st.container():
     with col_filter:
         st.markdown("### Pilih Periode Penjualan")
 
-        time1, time2, apply_f = st.columns([1, 1, 1])
+        time1, time2 = st.columns(2)
 
         with time1:
             start_date = st.date_input(
@@ -92,17 +92,17 @@ with st.container():
                 min_value=min_date, max_value=max_date, value=max_date
             )
 
-        with apply_f:
-            st.markdown(" ")
-            if st.button("Apply Filter"):
-                if start_date > end_date:
-                    st.error("Start Date harus sebelum End Date!")
-                else:
-                    st.success(f"Filter berhasil diterapkan")
+        if start_date > end_date:
+            st.error("Start Date tidak boleh lebih besar dari End Date!")
+            st.stop()
 
 st.markdown("---")
 
 ## Simpan data terfilter yang akan digunakan
+if start_date >= end_date:
+    st.stop()
+    st.warning("Data tidak dapat diproses!")
+
 filtered_df = sales_data_df[
     (sales_data_df['order_purchase_timestamp'].dt.date >= start_date) & 
     (sales_data_df['order_purchase_timestamp'].dt.date <= end_date)
