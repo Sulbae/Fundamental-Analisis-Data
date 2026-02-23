@@ -50,7 +50,7 @@ sales_data_df = load_sales_data('sales_data.csv')
 customers_df, sellers_df = load_users_data('customers_geo.csv', 'sellers_geo.csv')
 
 # DASHBOARD UI ----------
-st.title("Dashboard Penjualan E-Commerce")
+st.title("Dashboard Penjualan E-Commerce", anchor="center")
 
 # FILTERING DATA ----------
 ## Komponen filter waktu
