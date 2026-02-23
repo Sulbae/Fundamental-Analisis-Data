@@ -50,7 +50,10 @@ sales_data_df = load_sales_data('sales_data.csv')
 customers_df, sellers_df = load_users_data('customers_geo.csv', 'sellers_geo.csv')
 
 # DASHBOARD UI ----------
-st.title("Dashboard Penjualan E-Commerce", anchor="center")
+st.markdown(
+    "<h1 style='text-align: center;'>Dashboard Penjualan E-Commerce</h1>", 
+    unsafe_allow_html=True
+)
 
 # FILTERING DATA ----------
 ## Komponen filter waktu
@@ -69,7 +72,10 @@ with st.container():
 
     # Filter
     with col_filter:
-        st.markdown("### Pilih Periode Penjualan")
+        st.markdown(
+            "<h3 style='text-align: center;'>Pilih Periode Penjualan</h3>", 
+            unsafe_allow_html=True
+        )
 
         time1, time2, apply_f = st.columns([2, 2, 1])
 
