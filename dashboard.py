@@ -207,29 +207,51 @@ def create_users_map_df(customers_df, sellers_df):
 
 # VISUALISASI CHART ----------
 ## Buat DataFrame untuk analisis tren penjualan bulanan
-monthly_sales_df = create_monthly_orders_df(filtered_df)
+with st.container():
+    st.subheader("Ringkasan Transaksi")
+    ## Layout untuk menampilkan metrik
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
-## Layout untuk menampilkan metrik
-col1, col2, col3, col4 = st.columns(4)
+    with kpi1:
+        total_sales = filtered_df['total_sales'].sum()
+        st.metric(label="Total Sales", value=format_currency(total_sales, 'BRL', locale='pt_BR'))
 
-with col1:
-    total_sales = monthly_sales_df['total_sales'].sum()
-    st.metric(label="Total Sales", value=format_currency(total_sales, 'BRL', locale='pt_BR'))
+    with kpi2:
+        avg_sales = filtered_df['total_sales'].mean()
+        st.metric(label="Avg. Sales per Month", value=format_currency(avg_sales, 'BRL', locale='pt_BR'))
 
-with col2:
-    avg_sales = monthly_sales_df['total_sales'].mean()
-    st.metric(label="Avg. Sales per Month", value=format_currency(avg_sales, 'BRL', locale='pt_BR'))
+    with kpi3:
+        total_orders = filtered_df['total_orders'].sum()
+        st.metric(label="Total Orders", value=total_orders)
 
-with col3:
-    total_orders = monthly_sales_df['total_orders'].sum()
-    st.metric(label="Total Orders", value=total_orders)
+    with kpi4:
+        avg_orders = filtered_df['total_orders'].mean()
+        st.metric(label="Avg. Orders per Month", value=round(avg_orders, 2))
 
-with col4:
-    avg_orders = monthly_sales_df['total_orders'].mean()
-    st.metric(label="Avg. Orders per Month", value=round(avg_orders, 2))
+with st.container():
+    st.subheader("Kinerja Layanan")
+    ## Layout untuk menampilkan metrik
+    kpi5, kpi6, kpi7, kpi8 = st.columns(4)
+
+    with kpi5:
+        popular_payment = filtered_df['payment_type'].value_counts().index[0]
+        st.metric(label="Popular Payment Type", value=popular_payment)
+
+    with kpi6:
+        unpopular_payment = filtered_df['payment_type'].value_counts().index[-1]
+        st.metric(label="Unpopular Payment Type", value=unpopular_payment)
+
+    with kpi7:
+        delivery_success_rate = (filtered_df['order_status'] == 'delivered').mean() * 100
+        st.metric(label="Delivery Success Rate", value=f"{delivery_success_rate:.2f}%")
+
+    with kpi8:
+        avg_review = filtered_df['review_score'].mean()
+        st.metric(label="Avg. Review Score", value=round(avg_review, 2))
 
 ## Tampilkan chart tren penjualan bulanan
 st.subheader("📈 Tren Penjualan")
+monthly_sales_df = create_monthly_orders_df(filtered_df)
 sales_trend_viz(monthly_sales_df['order_purchase_timestamp'], monthly_sales_df['total_sales'])
 
 ## Tampilkan chart produk terlaris dan terburuk
