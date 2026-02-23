@@ -65,7 +65,7 @@ with st.container():
     with col_logo:
         st.image(
             "https://github.com/Sulbae/Fundamental-Analisis-Data/blob/4d6e16f7fbc32faa7581a9f81ac7d9c87a7c18f4/assets/pngtree-shopping-bag-icon.png?raw=true",
-            width=50
+            width=100
         )
 
     # Filter
@@ -212,19 +212,19 @@ with st.container():
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
     with kpi1:
-        total_sales = filtered_df['total_sales'].sum()
+        total_sales = filtered_df['payment_value'].sum()
         st.metric(label="Total Sales", value=format_currency(total_sales, 'BRL', locale='pt_BR'))
 
     with kpi2:
-        avg_sales = filtered_df['total_sales'].mean()
-        st.metric(label="Avg. Sales per Month", value=format_currency(avg_sales, 'BRL', locale='pt_BR'))
+        avg_sales = filtered_df['payment_value'].mean()
+        st.metric(label="Avg. Sales", value=format_currency(avg_sales, 'BRL', locale='pt_BR'))
 
     with kpi3:
-        total_orders = filtered_df['total_orders'].sum()
+        total_orders = filtered_df['order_id'].nunique()
         st.metric(label="Total Orders", value=total_orders)
 
     with kpi4:
-        avg_orders = filtered_df['total_orders'].mean()
+        num_customer = filtered_df['order_id'].nunique() / filtered_df['order_purchase_timestamp'].dt.to_period('M').nunique()
         st.metric(label="Avg. Orders per Month", value=round(avg_orders, 2))
 
 with st.container():
