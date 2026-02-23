@@ -99,10 +99,6 @@ with st.container():
 st.markdown("---")
 
 ## Simpan data terfilter yang akan digunakan
-if start_date >= end_date:
-    st.stop()
-    st.warning("Data tidak dapat diproses!")
-
 filtered_df = sales_data_df[
     (sales_data_df['order_purchase_timestamp'].dt.date >= start_date) & 
     (sales_data_df['order_purchase_timestamp'].dt.date <= end_date)
