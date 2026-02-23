@@ -1,6 +1,6 @@
 import streamlit as st
 st.set_page_config(
-    page_title="Fundamental Analisis Data", 
+    page_title="Dashboard", 
     layout="wide"
 )
 
@@ -11,9 +11,10 @@ import seaborn as sns
 import folium
 from folium.plugins import HeatMap
 from streamlit_folium import st_folium
-from babel.numbers import format_currency
+from babel.numbers import format_currency, get_currency_symbol
+from matplotlib.ticker import FuncFormatter
 
-sns.set_style("darkgrid")
+sns.set_style("white")
 
 # PENGOLAHAN DATA ----------
 ## sales data
@@ -148,10 +149,28 @@ filtered_df = sales_data_df[
 
 
 # HELPER FUNCTIONS ----------
-## Fungsi untuk membuat DataFrame tren penjualan bulanan
-def create_monthly_orders_df(df):
-    monthly_orders_df = (
-        df.resample(rule='M', on='order_purchase_timestamp')
+## Formating angka metrik
+def format_curr_short(value: float, currency: str = "BRL", locale:str = "pt_BR", decimals: int = 2) -> str:
+    symbol = get_currency_symbol(currency, locale=locale)
+
+    if value >= 1_000_000_000:
+        short = f"{value / 1_000_000_000:.{decimals}f} B"
+    elif value >= 1_000_000:
+        short = f"{value / 1_000_000:.{decimals}f} M"
+    elif value >= 1_000:
+        short = f"{value / 1_000:.{decimals}f} K"
+    else:
+        short = f"{value:,.0f}"
+
+    return f"{symbol}{short}"
+
+## Fungsi untuk membuat DataFrame tren penjualan
+def create_sales_trend_df(df, periode: str):
+    df = df.copy()
+    df['order_purchase_timestamp'] = pd.to_datetime(df['order_purchase_timestamp'], errors='coerce')
+
+    sales_trend_df = (
+        df.resample(rule=periode, on='order_purchase_timestamp')
         .agg({
             'order_id': 'nunique',
             'payment_value': 'sum'
@@ -159,31 +178,60 @@ def create_monthly_orders_df(df):
         .reset_index()
     )
 
-    monthly_orders_df.rename(columns={
+    sales_trend_df.rename(columns={
         'order_id': 'total_orders',
         'payment_value': 'total_sales'
     }, inplace=True)
 
-    monthly_orders_df['order_purchase_timestamp'] = monthly_orders_df['order_purchase_timestamp'].dt.strftime('%m-%Y')
+    if periode == 'W':
+        sales_trend_df['order_purchase_timestamp'] = sales_trend_df['order_purchase_timestamp'].dt.strftime('Week %U-W%Y')
+    elif periode == 'M':
+        sales_trend_df['order_purchase_timestamp'] = sales_trend_df['order_purchase_timestamp'].dt.strftime('%b-%y')
+    elif periode == 'Q':
+        sales_trend_df['order_purchase_timestamp'] = sales_trend_df['order_purchase_timestamp'].dt.to_period('Q').dt.strftime('Q%q-%Y')
+    elif periode == 'Y':
+        sales_trend_df['order_purchase_timestamp'] = sales_trend_df['order_purchase_timestamp'].dt.strftime('%Y')
+    else:
+        raise ValueError("Periode tidak valid!")
     
-    return monthly_orders_df
+    return sales_trend_df
 
-## Visualisasi tren penjualan bulanan
-def sales_trend_viz(x, y):
+## Formating angka y_axis tren penjualan
+def y_axis_formatter(x, pos):
+    if x >= 1_000_000_000:
+        return f"{x / 1_000_000_000:.1f}B"
+    elif x >= 1_000_000:
+        return f"{x / 1_000_000:.1f}M"
+    elif x >= 1_000:
+        return f"{x / 1_000:.1f}K"
+    else:
+        return f"{x:,.0f}"
+
+## Visualisasi tren penjualan
+def sales_trend_viz(x, y, xlabel: str):
     fig, ax = plt.subplots(figsize=(12, 5))
 
-    ax.plot(x, y, marker='o', linewidth=2, markersize=8, color="#90CAF9")
-    ax.set_title('Tren Penjualan Bulanan', fontsize=16, loc="center")
-    ax.set_xlabel('Bulan')
-    ax.set_ylabel('Total Penjualan')
+    ax.plot(x, y, marker='o', linewidth=2, markersize=5, color="#90CAF9")
+    ax.set_xlabel(xlabel, fontweight='bold', color='white')
+    ax.set_ylabel('Total Penjualan', fontweight='bold', color='white')
+
+    ax.yaxis.set_major_formatter(FuncFormatter(y_axis_formatter))
+    ax.tick_params(axis='x', colors='white')
+    ax.tick_params(axis='y', colors='white')
 
     plt.xticks(rotation=45)
-    
+    plt.tight_layout()
+    plt.grid(visible=True, which='major', axis='y', color='gray', linestyle='--', alpha=0.7)
+
+    # background transparan
+    fig.patch.set_alpha(0)
+    ax.set_facecolor("none")
+
     st.pyplot(fig)
     plt.close(fig)
 
 ## Visualisasi penjualan produk
-def plot_product_sales(data_df, ascending=False, title=""):
+def plot_product_sales(data_df, ascending=False):
     data = (
         data_df
         .rename(columns={'product_category_name_english': 'product_category'})
@@ -194,10 +242,7 @@ def plot_product_sales(data_df, ascending=False, title=""):
         .head(5)
     )
 
-    fig, ax = plt.subplots(
-        figsize=(10, 4),
-        facecolor='none'   
-    )
+    fig, ax = plt.subplots(figsize=(10, 4))
     
     colors = ["#90CAF9", "#D3D3D3", "#D3D3D3", "#D3D3D3", "#D3D3D3"]
 
@@ -209,10 +254,18 @@ def plot_product_sales(data_df, ascending=False, title=""):
         ax=ax
     )
 
-    ax.set_title(title, fontsize=14, color="white")
-    ax.set_xlabel('Jumlah Terjual', fontsize=12, color="white")
-    ax.set_ylabel('Kategori Produk', fontsize=12, color="white")
+    ax.set_xlabel('Jumlah Terjual', fontsize=12, fontweight='bold', color='white')
+    ax.set_ylabel('Kategori Produk', fontsize=12, fontweight='bold', color='white')
+    ax.tick_params(axis='x', colors='white')
+    ax.tick_params(axis='y', colors='white')
+
+    plt.tight_layout()
+    plt.grid(False)
     
+    # background transparan
+    fig.patch.set_alpha(0)
+    ax.set_facecolor("none")
+
     st.pyplot(fig)
     plt.close(fig)
 
@@ -264,71 +317,151 @@ def create_users_map_df(customers_df, sellers_df):
 # VISUALISASI CHART ----------
 ## Buat DataFrame untuk analisis tren penjualan bulanan
 with st.container():
-    st.subheader("Ringkasan Transaksi")
+    st.subheader("Ringkasan Transaksi", text_alignment="center")
     ## Layout untuk menampilkan metrik
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
     with kpi1:
-        total_sales = filtered_df['payment_value'].sum()
-        st.metric(label="Total Sales", value=format_currency(total_sales, 'BRL', locale='pt_BR'))
+        with st.container(border=True, horizontal_alignment="center", vertical_alignment="center"):
+            total_sales = filtered_df['payment_value'].sum()
+            st.markdown(f"""
+                <div style='text-align: center;'> 
+                    <div style='font-size: 1rem;'>Total Sales</div>
+                    <div style='font-size: 1.5rem; color: #90CAF9;'>{format_curr_short(total_sales, currency='BRL', locale='pt_BR')}</div>
+                </div>
+            """, unsafe_allow_html=True)
 
     with kpi2:
-        avg_sales = filtered_df['payment_value'].mean()
-        st.metric(label="Avg. Sales", value=format_currency(avg_sales, 'BRL', locale='pt_BR'))
+        with st.container(border=True, horizontal_alignment="center", vertical_alignment="center"):
+            avg_sales = filtered_df['payment_value'].mean()
+            st.markdown(f"""
+                <div style='text-align: center;'> 
+                    <div style='font-size: 1rem;'>Avg. Sales</div>
+                    <div style='font-size: 1.5rem; color: #90CAF9;'>{format_curr_short(avg_sales, currency='BRL', locale='pt_BR')}</div>
+                </div>
+            """, unsafe_allow_html=True)
 
     with kpi3:
-        total_orders = filtered_df['order_id'].nunique()
-        st.metric(label="Total Orders", value=total_orders)
+        with st.container(border=True, horizontal_alignment="center", vertical_alignment="top"):
+            total_orders = filtered_df['order_id'].value_counts().sum()
+            st.markdown(f"""
+                <div style='text-align: center;'> 
+                    <div style='font-size: 1rem;'>Total Orders</div>
+                    <div style='font-size: 1.5rem; color: #90CAF9;'>{total_orders}</div>
+                </div>
+            """, unsafe_allow_html=True)
 
     with kpi4:
-        num_customer = filtered_df['customer_id'].nunique()
-        st.metric(label="Total Customers", value=num_customer)
+        with st.container(border=True, horizontal_alignment="center", vertical_alignment="center"):
+            num_customer = filtered_df['customer_id'].nunique()
+            st.markdown(f"""
+                <div style='text-align: center;'> 
+                    <div style='font-size: 1rem;'>Total Customers</div>
+                    <div style='font-size: 1.5rem; color: #90CAF9;'>{num_customer}</div>
+                </div>
+            """, unsafe_allow_html=True)
 
 with st.container():
-    st.subheader("Kinerja Layanan")
+    st.subheader("Kinerja Layanan", text_alignment="center")
     ## Layout untuk menampilkan metrik
     kpi5, kpi6, kpi7, kpi8 = st.columns(4)
 
     with kpi5:
-        popular_payment = filtered_df['payment_type'].value_counts().index[0]
-        st.metric(label="Popular Payment Type", value=popular_payment)
+        with st.container(border=True):
+            popular_payment = filtered_df['payment_type'].value_counts().index[0]
+            st.markdown(f"""
+                <div style='text-align: center;'> 
+                    <div style='font-size: 1rem;'>Popular Payment</div>
+                    <div style='font-size: 1.5rem; color: #90CAF9;'>{popular_payment}</div>
+                </div>
+            """, unsafe_allow_html=True)
 
     with kpi6:
-        unpopular_payment = filtered_df['payment_type'].value_counts().index[-1]
-        st.metric(label="Unpopular Payment Type", value=unpopular_payment)
+        with st.container(border=True):
+            unpopular_payment = filtered_df['payment_type'].value_counts().index[-1]
+            st.markdown(f"""
+                <div style='text-align: center;'> 
+                    <div style='font-size: 1rem;'>Unpopular Payment</div>
+                    <div style='font-size: 1.5rem; color: #90CAF9;'>{unpopular_payment}</div>
+                </div>
+            """, unsafe_allow_html=True)
 
     with kpi7:
-        delivery_success_rate = (filtered_df['order_status'] == 'delivered').mean() * 100
-        st.metric(label="Delivery Success Rate", value=f"{delivery_success_rate:.2f}%")
+        with st.container(border=True):
+            delivery_success_rate = (filtered_df['order_status'] == 'delivered').mean() * 100
+            st.markdown(f"""
+                <div style='text-align: center;'> 
+                    <div style='font-size: 1rem;'>Delivery Success Rate</div>
+                    <div style='font-size: 1.5rem; color: #90CAF9;'>{delivery_success_rate:.2f}%</div>
+                </div>
+            """, unsafe_allow_html=True)
 
     with kpi8:
-        avg_review = filtered_df['review_score'].mean()
-        st.metric(label="Avg. Review Score", value=round(avg_review, 2))
+        with st.container(border=True):
+            avg_review = filtered_df['review_score'].mean()
+            st.markdown(f"""
+                <div style='text-align: center;'> 
+                    <div style='font-size: 1rem;'>Avg. Rating</div>
+                    <div style='font-size: 1.5rem; color: #90CAF9;'>{avg_review:.2f}</div>
+                </div>
+            """, unsafe_allow_html=True)
 
-## Tampilkan chart tren penjualan bulanan
+## Visualisasi Tren Penjualan
 st.subheader("📈 Tren Penjualan")
-monthly_sales_df = create_monthly_orders_df(filtered_df)
-sales_trend_viz(monthly_sales_df['order_purchase_timestamp'], monthly_sales_df['total_sales'])
+
+tab1, tab2, tab3, tab4 = st.tabs(["Yearly", "Quarterly", "Monthly", "Weekly"])
+
+### Tab 1: Tren Tahunan
+with tab1:
+    yearly_sales_df = create_sales_trend_df(filtered_df, periode='Y')
+    sales_trend_viz(yearly_sales_df['order_purchase_timestamp'], yearly_sales_df['total_sales'], xlabel="Tahun")
+
+### Tab 2: Tren Quarterly
+with tab2:
+    quarterly_sales_df = create_sales_trend_df(filtered_df, periode='Q')
+    sales_trend_viz(quarterly_sales_df['order_purchase_timestamp'], quarterly_sales_df['total_sales'], xlabel="Quarter")
+
+### Tab 3: Tren Bulanan
+with tab3:
+    monthly_sales_df = create_sales_trend_df(filtered_df, periode='M')
+    sales_trend_viz(monthly_sales_df['order_purchase_timestamp'], monthly_sales_df['total_sales'], xlabel="Bulan")
+
+### Tab 3: Tren Bulanan
+with tab4:
+    weekly_sales_df = create_sales_trend_df(filtered_df, periode='W')
+    sales_trend_viz(weekly_sales_df['order_purchase_timestamp'], weekly_sales_df['total_sales'], xlabel="Minggu")
 
 ## Tampilkan chart produk terlaris dan terburuk
 col1, col2 = st.columns(2)
 
 with col1:
-    plot_product_sales(
-        data_df=filtered_df,
-        ascending=False,
-        title="Produk Terlaris"
-    )
+    with st.container():
+        st.subheader("👍 Produk Terlaris")
+        plot_product_sales(
+            data_df=filtered_df,
+            ascending=False
+        )
 
 with col2:
-    plot_product_sales(
-        data_df=filtered_df,
-        ascending=True,
-        title="Produk Penjualan Terendah"
-    )
+    with st.container():
+        st.subheader("👎 Produk Kurang Laris")
+        plot_product_sales(
+            data_df=filtered_df,
+            ascending=True
+        )
 
 ## Tampilkan peta distribusi users
 ## st.subheader("Distribusi Lokasi Users")
 ## st_folium(create_users_map_df(customers_df, sellers_df), height=650)
 
-st.caption("Copyright © 2026 - Data Science")
+
+st.divider()
+st.markdown(
+    """
+    <div style="text-align: center;">
+        <p style="font-size: 0.8rem; color:grey;">
+            Copyright © 2026 - Data Science
+        </p>
+    </div>
+    """, unsafe_allow_html=True
+)
