@@ -211,7 +211,7 @@ def y_axis_formatter(x, pos):
 def sales_trend_viz(x, y, xlabel: str):
     fig, ax = plt.subplots(figsize=(12, 5))
 
-    ax.plot(x, y, marker='o', linewidth=2, markersize=5, color="#90CAF9")
+    ax.plot(x, y, marker='o', linewidth=2, markersize=5, color="#6EC6BF")
     ax.set_xlabel(xlabel, fontweight='bold', color='white')
     ax.set_ylabel('Total Penjualan', fontweight='bold', color='white')
 
@@ -244,7 +244,7 @@ def plot_product_sales(data_df, ascending=False):
 
     fig, ax = plt.subplots(figsize=(10, 4))
     
-    colors = ["#90CAF9", "#D3D3D3", "#D3D3D3", "#D3D3D3", "#D3D3D3"]
+    colors = ["#6EC6BF", "#D3D3D3", "#D3D3D3", "#D3D3D3", "#D3D3D3"]
 
     sns.barplot(
         data=data,
@@ -327,7 +327,7 @@ with st.container():
             st.markdown(f"""
                 <div style='text-align: center;'> 
                     <div style='font-size: 1rem;'>Total Sales</div>
-                    <div style='font-size: 1.5rem; color: #90CAF9;'>{format_curr_short(total_sales, currency='BRL', locale='pt_BR')}</div>
+                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{format_curr_short(total_sales, currency='BRL', locale='pt_BR')}</div>
                 </div>
             """, unsafe_allow_html=True)
 
@@ -337,7 +337,7 @@ with st.container():
             st.markdown(f"""
                 <div style='text-align: center;'> 
                     <div style='font-size: 1rem;'>Avg. Sales</div>
-                    <div style='font-size: 1.5rem; color: #90CAF9;'>{format_curr_short(avg_sales, currency='BRL', locale='pt_BR')}</div>
+                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{format_curr_short(avg_sales, currency='BRL', locale='pt_BR')}</div>
                 </div>
             """, unsafe_allow_html=True)
 
@@ -347,7 +347,7 @@ with st.container():
             st.markdown(f"""
                 <div style='text-align: center;'> 
                     <div style='font-size: 1rem;'>Total Orders</div>
-                    <div style='font-size: 1.5rem; color: #90CAF9;'>{total_orders}</div>
+                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{total_orders}</div>
                 </div>
             """, unsafe_allow_html=True)
 
@@ -357,7 +357,7 @@ with st.container():
             st.markdown(f"""
                 <div style='text-align: center;'> 
                     <div style='font-size: 1rem;'>Total Customers</div>
-                    <div style='font-size: 1.5rem; color: #90CAF9;'>{num_customer}</div>
+                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{num_customer}</div>
                 </div>
             """, unsafe_allow_html=True)
 
@@ -372,7 +372,7 @@ with st.container():
             st.markdown(f"""
                 <div style='text-align: center;'> 
                     <div style='font-size: 1rem;'>Popular Payment</div>
-                    <div style='font-size: 1.5rem; color: #90CAF9;'>{popular_payment}</div>
+                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{popular_payment}</div>
                 </div>
             """, unsafe_allow_html=True)
 
@@ -382,7 +382,7 @@ with st.container():
             st.markdown(f"""
                 <div style='text-align: center;'> 
                     <div style='font-size: 1rem;'>Unpopular Payment</div>
-                    <div style='font-size: 1.5rem; color: #90CAF9;'>{unpopular_payment}</div>
+                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{unpopular_payment}</div>
                 </div>
             """, unsafe_allow_html=True)
 
@@ -392,7 +392,7 @@ with st.container():
             st.markdown(f"""
                 <div style='text-align: center;'> 
                     <div style='font-size: 1rem;'>Delivery Success Rate</div>
-                    <div style='font-size: 1.5rem; color: #90CAF9;'>{delivery_success_rate:.2f}%</div>
+                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{delivery_success_rate:.2f}%</div>
                 </div>
             """, unsafe_allow_html=True)
 
@@ -402,7 +402,7 @@ with st.container():
             st.markdown(f"""
                 <div style='text-align: center;'> 
                     <div style='font-size: 1rem;'>Avg. Rating</div>
-                    <div style='font-size: 1.5rem; color: #90CAF9;'>{avg_review:.2f}</div>
+                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{avg_review:.2f}</div>
                 </div>
             """, unsafe_allow_html=True)
 
