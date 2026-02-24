@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import geopandas as gpd
 import geodatasets
+from scipy.stats import gaussian_kde
 import folium
 import pydeck as pdk
 from folium.plugins import HeatMap, MarkerCluster
@@ -55,7 +56,7 @@ customers_df, sellers_df = load_users_data('customers_geo.csv', 'sellers_geo.csv
 
 # DASHBOARD UI ----------
 st.markdown(
-    "<h1 style='text-align: center;'>Dashboard Penjualan E-Commerce</h1>", 
+    "<h1 style='text-align: center; font-size: 3.5rem;'>Dashboard Penjualan E-Commerce</h1>", 
     unsafe_allow_html=True
 )
 
@@ -223,7 +224,7 @@ def sales_trend_viz(x, y, xlabel: str):
     plt.tight_layout()
     plt.grid(visible=True, which='major', axis='y', color='gray', linestyle='--', alpha=0.7)
 
-    # background transparan
+    # Background transparan
     fig.patch.set_alpha(0)
     ax.set_facecolor("none")
 
@@ -262,7 +263,7 @@ def plot_product_sales(data_df, ascending=False):
     plt.tight_layout()
     plt.grid(False)
     
-    # background transparan
+    # Background transparan
     fig.patch.set_alpha(0)
     ax.set_facecolor("none")
 
@@ -272,57 +273,50 @@ def plot_product_sales(data_df, ascending=False):
 ## Peta distribusi lokasi users
 @st.cache_data()
 def plot_users_map(customers_df, sellers_df):
-    fig, ax = plt.subplots(figsize=(14, 7))
-    ax.set_facecolor('#f5f5f5')  # light grey
-    fig.patch.set_alpha(0) # transparan
-
-    # Boundary
-    url = "https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_0_countries.zip"
-    world = gpd.read_file(url)
-
-    # Filter Brazil
-    brazil = world[world["ADMIN"] == "Brazil"]
-
-    brazil.plot(
-        ax=plt.gca(), color='black', edgecolor='black', linewidth=0.5)
-
-    ## Customer Layer
-    hb = ax.hexbin(
-        customers_df['geolocation_lng'], 
-        customers_df['geolocation_lat'], 
-        gridsize=80, 
-        cmap='BuGn',
-        mincnt=1, 
-        alpha=0.8,
-        bins='log'
-    )
-    cbar = fig.colorbar(hb, ax=ax)
-    cbar.set_label('Jumlah Customers')
-
-    ## Seller Layer
-    ax.scatter(
-        sellers_df['geolocation_lng'], 
-        sellers_df['geolocation_lat'], 
-        color='#FFA500', # warna orange
-        s=8, 
-        alpha=0.5, 
-        label='Sellers'
-    )
     
-    # Map Style
-    ax.tick_params(axis='x', colors='white')
-    ax.tick_params(axis='y', colors='white')
-    ax.set_xlabel('Longitude', fontsize=12, color='white')
-    ax.set_ylabel('Latitude', fontsize=12, color='white')
-    ax.legend(loc='upper right')
+    # Customer Layer
+    customer_layer = pdk.Layer(
+        "HexagonLayer",
+        data=customers_df,
+        get_position='[geolocation_lng, geolocation_lat]',
+        radius=10_000,
+        extruded=False,
+        pickable=True,
+        coverage=0.8,
+        colorRange= [
+            [160, 224, 208, 200], # min semi transparan
+            [125, 206, 196, 230],
+            [110, 198, 191, 255] # max "#6EC6BF"
+        ]
+    )
 
-    for spine in ax.spines.values():
-        spine.set_visible(False)
+    # Seller Layer
+    seller_layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=sellers_df,
+        get_position='[geolocation_lng, geolocation_lat]',
+        get_fill_color=[255, 107, 0],
+        get_radius=3000,
+        opacity=0.1,
+        pickable=True,
+    )
 
-    ax.grid(False)
-    plt.tight_layout()
+    # View State Brazil
+    view_state = pdk.ViewState(
+        latitude=customers_df['geolocation_lat'].mean(),
+        longitude=customers_df['geolocation_lng'].mean(),
+        zoom=5,
+        pitch=0,
+    )
 
-    return fig
+    # Deck Object
+    deck = pdk.Deck(
+        layers=[customer_layer, seller_layer],
+        initial_view_state=view_state,
+        map_style="light"
+    )
+
+    return deck
 
 # VISUALISASI DATA ----------
 
@@ -369,7 +363,7 @@ button[data-baseweb="tab"]:hover {
 </style>
 """, unsafe_allow_html=True)
 
-sales_page, customer_page, seller_page = st.tabs(["Sales Page", "Customer Page", "Seller Page"])
+sales_page, users_page = st.tabs(["Sales Page", "Users Page"])
 
 # Halaman Sales
 with sales_page:
@@ -377,7 +371,7 @@ with sales_page:
     <style>
 
     .kpi-card {
-        background: linear-gradient(#171515);
+        background: linear-gradient(#262730);
         padding: 0.5rem;
         border-radius: 5px;
         border: 1px solid white;
@@ -557,21 +551,37 @@ with sales_page:
                 data_df=filtered_df,
                 ascending=True
             )
-'''
-## Tampilkan peta distribusi users
-with st.container(border=True):
-    st.subheader("🌎 Distribusi Lokasi Users", text_alignment="center")
+# Halaman Users: Customers & Sellers
+with users_page:
 
-    fig = plot_users_map(customers_df, sellers_df)
-    st.pyplot(fig)
-'''
-st.divider()
-st.markdown(
-    """
-    <div style="text-align: center;">
-        <p style="font-size: 0.8rem; color:grey;">
-            Copyright © 2026 - Data Science
-        </p>
-    </div>
-    """, unsafe_allow_html=True
-)
+    ## Tampilkan peta distribusi users
+    with st.container(border=True):
+        st.subheader("🌎 Persebaran Lokasi Users", text_alignment="center")
+
+        deck = plot_users_map(customers_df, sellers_df)
+        st.pydeck_chart(deck)
+
+        st.markdown("""
+            <div style="display:flex; align-items:center; gap:20px; margin-top:10px;">
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <div style="width:20px; height:20px; background-color:#6EC6BF;"></div>
+                    <span>Customer</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:5px;">
+                    <div style="width:20px; height:20px; background-color:#FF6B00;"></div>
+                    <span>Seller</span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+with st.container():
+    st.divider()
+    st.markdown(
+        """
+        <div style="text-align: center;">
+            <p style="font-size: 0.8rem; color:grey;">
+                Copyright © 2026 - Data Science
+            </p>
+        </div>
+        """, unsafe_allow_html=True
+    )
