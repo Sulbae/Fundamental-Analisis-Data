@@ -8,8 +8,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import geopandas as gpd
+import geodatasets
 import folium
-from folium.plugins import HeatMap
+import pydeck as pdk
+from folium.plugins import HeatMap, MarkerCluster
 from streamlit_folium import st_folium
 from babel.numbers import format_currency, get_currency_symbol
 from matplotlib.ticker import FuncFormatter
@@ -71,12 +74,10 @@ st.markdown(
     
     .logo-wrapper {
         display: flex;
-        align-items: center;
+        align-items: flex-end;
     }
     
     .logo-wrapper img {
-        display: flex;
-        align-items: flex-end;
         width: 100%;
         height: auto;
     }
@@ -91,6 +92,7 @@ st.markdown(
         display: flex;
         flex-direction: column;
     }
+
     </style>
     """, unsafe_allow_html=True
 )
@@ -138,7 +140,6 @@ with st.container():
         if start_date > end_date:
             st.error("Start Date tidak boleh lebih besar dari End Date!")
             st.stop()
-    
 st.markdown("---")
 
 ## Simpan data terfilter yang akan digunakan
@@ -270,49 +271,59 @@ def plot_product_sales(data_df, ascending=False):
     plt.close(fig)
 
 ## Peta distribusi lokasi users
-'''
-def create_users_map_df(customers_df, sellers_df):
-    # Base map
-    m = folium.Map(
-        location=[-14.2, -51.9], 
-        zoom_start=4,
-        tiles='cartodbpositron'
-    )
+@st.cache_data()
+def plot_users_map(customers_df, sellers_df):
+    fig, ax = plt.subplots(figsize=(14, 7))
+    ax.set_facecolor('#f5f5f5')  # light grey
+    fig.patch.set_alpha(0) # transparan
+
+    # Boundary
+    url = "https://naturalearth.s3.amazonaws.com/110m_cultural/ne_110m_admin_0_countries.zip"
+    world = gpd.read_file(url)
+
+    # Filter Brazil
+    brazil = world[world["ADMIN"] == "Brazil"]
+
+    brazil.plot(
+        ax=plt.gca(), color='black', edgecolor='black', linewidth=0.5)
 
     ## Customer Layer
-    customer_layer = folium.FeatureGroup(name='Customers')
-
-    HeatMap(
-        data=list(zip(customers_df['geolocation_lat'], customers_df['geolocation_lng'])),
-        radius=10,
-        blur=15,
-        min_opacity=0.4,
-        gradient={0.0: 'gray', 1.0: 'blue'} # warna gray = min, blue = max
-    ).add_to(customer_layer)
-
-    customer_layer.add_to(m)
+    hb = ax.hexbin(
+        customers_df['geolocation_lng'], 
+        customers_df['geolocation_lat'], 
+        gridsize=80, 
+        cmap='BuGn',
+        mincnt=1, 
+        alpha=0.8,
+        bins='log'
+    )
+    cbar = fig.colorbar(hb, ax=ax)
+    cbar.set_label('Jumlah Customers')
 
     ## Seller Layer
-    seller_layer = folium.FeatureGroup(name='Sellers')
+    ax.scatter(
+        sellers_df['geolocation_lng'], 
+        sellers_df['geolocation_lat'], 
+        color='#FFA500', # warna orange
+        s=8, 
+        alpha=0.5, 
+        label='Sellers'
+    )
+    
+    # Map Style
+    ax.tick_params(axis='x', colors='white')
+    ax.tick_params(axis='y', colors='white')
+    ax.set_xlabel('Longitude', fontsize=12, color='white')
+    ax.set_ylabel('Latitude', fontsize=12, color='white')
+    ax.legend(loc='upper right')
 
-    for idx, row in sellers_df.iterrows():
-        folium.CircleMarker(
-            location=[row['geolocation_lat'], row['geolocation_lng']],
-            radius=4,
-            color='#FFA500',
-            fill=True,
-            fill_color='#FFA500',
-            fill_opacity=0.7,
-            popup="Seller"
-        ).add_to(seller_layer)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
 
-    seller_layer.add_to(m)
+    ax.grid(False)
+    plt.tight_layout()
 
-    # Layer Control
-    folium.LayerControl(collapsed=False).add_to(m)
-
-    return m
-'''
+    return fig
 
 # VISUALISASI CHART ----------
 ## Buat DataFrame untuk analisis tren penjualan bulanan
@@ -449,12 +460,14 @@ with col2:
             data_df=filtered_df,
             ascending=True
         )
-
+'''
 ## Tampilkan peta distribusi users
-## st.subheader("Distribusi Lokasi Users")
-## st_folium(create_users_map_df(customers_df, sellers_df), height=650)
+with st.container(border=True):
+    st.subheader("🌎 Distribusi Lokasi Users", text_alignment="center")
 
-
+    fig = plot_users_map(customers_df, sellers_df)
+    st.pyplot(fig)
+'''
 st.divider()
 st.markdown(
     """
