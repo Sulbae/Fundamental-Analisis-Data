@@ -140,7 +140,6 @@ with st.container():
         if start_date > end_date:
             st.error("Start Date tidak boleh lebih besar dari End Date!")
             st.stop()
-st.markdown("---")
 
 ## Simpan data terfilter yang akan digunakan
 filtered_df = sales_data_df[
@@ -325,141 +324,194 @@ def plot_users_map(customers_df, sellers_df):
 
     return fig
 
-# VISUALISASI CHART ----------
-## Buat DataFrame untuk analisis tren penjualan bulanan
-with st.container():
-    st.subheader("Ringkasan Transaksi", text_alignment="center")
-    ## Layout untuk menampilkan metrik
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+# VISUALISASI DATA ----------
 
-    with kpi1:
-        with st.container(border=True, horizontal_alignment="center", vertical_alignment="center"):
-            total_sales = filtered_df['payment_value'].sum()
-            st.markdown(f"""
-                <div style='text-align: center;'> 
-                    <div style='font-size: 1rem;'>Total Sales</div>
-                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{format_curr_short(total_sales, currency='BRL', locale='pt_BR')}</div>
-                </div>
-            """, unsafe_allow_html=True)
+st.markdown("""
+<style>
+/* Center tab container */            
+div[data-baseweb="tab-list"] {
+    display: flex;
+    justify-content: flex-start !important;
+    gap: 0px;
+}       
 
-    with kpi2:
-        with st.container(border=True, horizontal_alignment="center", vertical_alignment="center"):
-            avg_sales = filtered_df['payment_value'].mean()
-            st.markdown(f"""
-                <div style='text-align: center;'> 
-                    <div style='font-size: 1rem;'>Avg. Sales</div>
-                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{format_curr_short(avg_sales, currency='BRL', locale='pt_BR')}</div>
-                </div>
-            """, unsafe_allow_html=True)
+/* Default ukuran tab */
+div[data-baseweb="tab-list"] button {
+    flex: 1 1 0px;
+    max-width: 100px;        
+}            
+            
+/* Default tab style */          
+button[data-baseweb="tab"] {
+    font-size: 14px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 5px;
+    background-color: transparent;
+    color: grey;
+    border: 1px solid grey;
+    transition: all 0.25s ease;
+}
 
-    with kpi3:
-        with st.container(border=True, horizontal_alignment="center", vertical_alignment="top"):
-            total_orders = filtered_df['order_id'].value_counts().sum()
-            st.markdown(f"""
-                <div style='text-align: center;'> 
-                    <div style='font-size: 1rem;'>Total Orders</div>
-                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{total_orders}</div>
-                </div>
-            """, unsafe_allow_html=True)
+/* Active tab style */            
+button[data-baseweb="tab"][aria-selected="true"] {
+    background-color: transparent;
+    border: 1px solid #FFA500;
+    color: #FFA500 !important;
+}                  
 
-    with kpi4:
-        with st.container(border=True, horizontal_alignment="center", vertical_alignment="center"):
-            num_customer = filtered_df['customer_id'].nunique()
-            st.markdown(f"""
-                <div style='text-align: center;'> 
-                    <div style='font-size: 1rem;'>Total Customers</div>
-                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{num_customer}</div>
-                </div>
-            """, unsafe_allow_html=True)
+/* Hover effect */
+button[data-baseweb="tab"]:hover {
+    background-color: transparent;
+    border: 1px solid #FFA500;
+    color: #FFA500 !important;
+}            
+</style>
+""", unsafe_allow_html=True)
 
-with st.container():
-    st.subheader("Kinerja Layanan", text_alignment="center")
-    ## Layout untuk menampilkan metrik
-    kpi5, kpi6, kpi7, kpi8 = st.columns(4)
+sales_page, customer_page, seller_page = st.tabs(["Sales Page", "Customer Page", "Seller Page"])
 
-    with kpi5:
-        with st.container(border=True):
-            popular_payment = filtered_df['payment_type'].value_counts().index[0]
-            st.markdown(f"""
-                <div style='text-align: center;'> 
-                    <div style='font-size: 1rem;'>Popular Payment</div>
-                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{popular_payment}</div>
-                </div>
-            """, unsafe_allow_html=True)
-
-    with kpi6:
-        with st.container(border=True):
-            unpopular_payment = filtered_df['payment_type'].value_counts().index[-1]
-            st.markdown(f"""
-                <div style='text-align: center;'> 
-                    <div style='font-size: 1rem;'>Unpopular Payment</div>
-                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{unpopular_payment}</div>
-                </div>
-            """, unsafe_allow_html=True)
-
-    with kpi7:
-        with st.container(border=True):
-            delivery_success_rate = (filtered_df['order_status'] == 'delivered').mean() * 100
-            st.markdown(f"""
-                <div style='text-align: center;'> 
-                    <div style='font-size: 1rem;'>Delivery Success Rate</div>
-                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{delivery_success_rate:.2f}%</div>
-                </div>
-            """, unsafe_allow_html=True)
-
-    with kpi8:
-        with st.container(border=True):
-            avg_review = filtered_df['review_score'].mean()
-            st.markdown(f"""
-                <div style='text-align: center;'> 
-                    <div style='font-size: 1rem;'>Avg. Rating</div>
-                    <div style='font-size: 1.5rem; color: #6EC6BF;'>{avg_review:.2f}</div>
-                </div>
-            """, unsafe_allow_html=True)
-
-## Visualisasi Tren Penjualan
-st.subheader("📈 Tren Penjualan")
-
-tab1, tab2, tab3, tab4 = st.tabs(["Yearly", "Quarterly", "Monthly", "Weekly"])
-
-### Tab 1: Tren Tahunan
-with tab1:
-    yearly_sales_df = create_sales_trend_df(filtered_df, periode='Y')
-    sales_trend_viz(yearly_sales_df['order_purchase_timestamp'], yearly_sales_df['total_sales'], xlabel="Tahun")
-
-### Tab 2: Tren Quarterly
-with tab2:
-    quarterly_sales_df = create_sales_trend_df(filtered_df, periode='Q')
-    sales_trend_viz(quarterly_sales_df['order_purchase_timestamp'], quarterly_sales_df['total_sales'], xlabel="Quarter")
-
-### Tab 3: Tren Bulanan
-with tab3:
-    monthly_sales_df = create_sales_trend_df(filtered_df, periode='M')
-    sales_trend_viz(monthly_sales_df['order_purchase_timestamp'], monthly_sales_df['total_sales'], xlabel="Bulan")
-
-### Tab 3: Tren Bulanan
-with tab4:
-    weekly_sales_df = create_sales_trend_df(filtered_df, periode='W')
-    sales_trend_viz(weekly_sales_df['order_purchase_timestamp'], weekly_sales_df['total_sales'], xlabel="Minggu")
-
-## Tampilkan chart produk terlaris dan terburuk
-col1, col2 = st.columns(2)
-
-with col1:
+with sales_page:
+    ## Buat DataFrame untuk analisis tren penjualan bulanan
     with st.container():
-        st.subheader("👍 Produk Terlaris")
-        plot_product_sales(
-            data_df=filtered_df,
-            ascending=False
-        )
+        st.subheader("Ringkasan Transaksi", text_alignment="center")
+        ## Layout untuk menampilkan metrik
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
-with col2:
+        with kpi1:
+            with st.container(border=True, horizontal_alignment="center", vertical_alignment="center"):
+                total_sales = filtered_df['payment_value'].sum()
+                st.markdown(f"""
+                    <div style='text-align: center;'> 
+                        <div style='font-size: 1rem;'>Total Sales</div>
+                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{format_curr_short(total_sales, currency='BRL', locale='pt_BR')}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        with kpi2:
+            with st.container(border=True, horizontal_alignment="center", vertical_alignment="center"):
+                avg_sales = filtered_df['payment_value'].mean()
+                st.markdown(f"""
+                    <div style='text-align: center;'> 
+                        <div style='font-size: 1rem;'>Avg. Sales</div>
+                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{format_curr_short(avg_sales, currency='BRL', locale='pt_BR')}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        with kpi3:
+            with st.container(border=True, horizontal_alignment="center", vertical_alignment="top"):
+                total_orders = filtered_df['order_id'].value_counts().sum()
+                st.markdown(f"""
+                    <div style='text-align: center;'> 
+                        <div style='font-size: 1rem;'>Total Orders</div>
+                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{total_orders}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        with kpi4:
+            with st.container(border=True, horizontal_alignment="center", vertical_alignment="center"):
+                num_customer = filtered_df['customer_id'].nunique()
+                order_per_cus = total_orders / num_customer
+                st.markdown(f"""
+                    <div style='text-align: center;'> 
+                        <div style='font-size: 1rem;'>Avg. Order per Customer</div>
+                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{order_per_cus:0.1f}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
     with st.container():
-        st.subheader("👎 Produk Kurang Laris")
-        plot_product_sales(
-            data_df=filtered_df,
-            ascending=True
-        )
+        st.subheader("Kinerja Layanan", text_alignment="center")
+        ## Layout untuk menampilkan metrik
+        kpi5, kpi6, kpi7, kpi8 = st.columns(4)
+
+        with kpi5:
+            with st.container(border=True):
+                delivery_success_rate = (filtered_df['order_status'] == 'delivered').mean() * 100
+                st.markdown(f"""
+                    <div style='text-align: center;'> 
+                        <div style='font-size: 1rem;'>Delivery Success Rate</div>
+                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{delivery_success_rate:.2f}%</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        with kpi6:
+            with st.container(border=True):
+                filtered_df['days_to_delivered'] = (filtered_df['order_delivered_customer_date'] - filtered_df['order_purchase_timestamp']).dt.days
+                avg_delivery_days = filtered_df['days_to_delivered'].mean()
+                st.markdown(f"""
+                    <div style='text-align: center;'> 
+                        <div style='font-size: 1rem;'>Avg. Delivery Days</div>
+                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{avg_delivery_days:.0f}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        with kpi7:
+            with st.container(border=True):
+                filtered_df['estimated_delivery_days'] = (filtered_df['order_estimated_delivery_date'] - filtered_df['order_purchase_timestamp']).dt.days
+                filtered_df['delivery_performance'] = (filtered_df['estimated_delivery_days'] - filtered_df['days_to_delivered']).apply(lambda x: 'Early' if x > 0 else ('On-Time' if x == 0 else 'Late'))
+                delivery_late_rate = ((filtered_df['delivery_performance'] == 'Late').sum()) / len(filtered_df['delivery_performance']) * 100
+
+                st.markdown(f"""
+                    <div style='text-align: center;'> 
+                        <div style='font-size: 1rem;'>Delivery Late Rate</div>
+                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{delivery_late_rate:.2f}% </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        with kpi8:
+            with st.container(border=True):
+                avg_review = filtered_df['review_score'].mean()
+                st.markdown(f"""
+                    <div style='text-align: center;'> 
+                        <div style='font-size: 1rem;'>Avg. Rating</div>
+                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{avg_review:.2f}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+    ## Visualisasi Tren Penjualan
+    st.subheader("📈 Tren Penjualan")
+
+    tab1, tab2, tab3, tab4 = st.tabs(["Yearly", "Quarterly", "Monthly", "Weekly"])
+    
+    ### Tab 1: Tren Tahunan
+    with tab1:
+        yearly_sales_df = create_sales_trend_df(filtered_df, periode='Y')
+        sales_trend_viz(yearly_sales_df['order_purchase_timestamp'], yearly_sales_df['total_sales'], xlabel="Tahun")
+
+    ### Tab 2: Tren Quarterly
+    with tab2:
+        quarterly_sales_df = create_sales_trend_df(filtered_df, periode='Q')
+        sales_trend_viz(quarterly_sales_df['order_purchase_timestamp'], quarterly_sales_df['total_sales'], xlabel="Quarter")
+
+    ### Tab 3: Tren Bulanan
+    with tab3:
+        monthly_sales_df = create_sales_trend_df(filtered_df, periode='M')
+        sales_trend_viz(monthly_sales_df['order_purchase_timestamp'], monthly_sales_df['total_sales'], xlabel="Bulan")
+
+    ### Tab 3: Tren Bulanan
+    with tab4:
+        weekly_sales_df = create_sales_trend_df(filtered_df, periode='W')
+        sales_trend_viz(weekly_sales_df['order_purchase_timestamp'], weekly_sales_df['total_sales'], xlabel="Minggu")
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    ## Tampilkan chart produk terlaris dan terburuk
+    col1, col2 = st.columns(2)
+
+    with col1:
+        with st.container():
+            st.subheader("👍 Produk Terlaris")
+            plot_product_sales(
+                data_df=filtered_df,
+                ascending=False
+            )
+
+    with col2:
+        with st.container():
+            st.subheader("👎 Produk Kurang Laris")
+            plot_product_sales(
+                data_df=filtered_df,
+                ascending=True
+            )
 '''
 ## Tampilkan peta distribusi users
 with st.container(border=True):
