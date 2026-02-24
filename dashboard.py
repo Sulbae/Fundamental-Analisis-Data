@@ -371,51 +371,80 @@ button[data-baseweb="tab"]:hover {
 
 sales_page, customer_page, seller_page = st.tabs(["Sales Page", "Customer Page", "Seller Page"])
 
+# Halaman Sales
 with sales_page:
-    ## Buat DataFrame untuk analisis tren penjualan bulanan
+    st.markdown("""
+    <style>
+
+    .kpi-card {
+        background: linear-gradient(#171515);
+        padding: 0.5rem;
+        border-radius: 5px;
+        border: 1px solid white;
+        box-shadow: 0 0 10px grey;
+        transition: all 0.25s ease;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     with st.container():
         st.subheader("Ringkasan Transaksi", text_alignment="center")
         ## Layout untuk menampilkan metrik
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
 
         with kpi1:
-            with st.container(border=True, horizontal_alignment="center", vertical_alignment="center"):
+            with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 total_sales = filtered_df['payment_value'].sum()
                 st.markdown(f"""
-                    <div style='text-align: center;'> 
-                        <div style='font-size: 1rem;'>Total Sales</div>
-                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{format_curr_short(total_sales, currency='BRL', locale='pt_BR')}</div>
+                    <div class="kpi-card">
+                        <div style='text-align: center;'> 
+                            <div style='font-size: 1rem;'>Total Sales</div>
+                            <div style='font-size: 2rem; color: #6EC6BF;'>
+                                {format_curr_short(total_sales, currency='BRL', locale='pt_BR')}
+                            </div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
 
         with kpi2:
-            with st.container(border=True, horizontal_alignment="center", vertical_alignment="center"):
+            with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 avg_sales = filtered_df['payment_value'].mean()
                 st.markdown(f"""
-                    <div style='text-align: center;'> 
-                        <div style='font-size: 1rem;'>Avg. Sales</div>
-                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{format_curr_short(avg_sales, currency='BRL', locale='pt_BR')}</div>
+                    <div class="kpi-card">    
+                        <div style='text-align: center;'> 
+                            <div style='font-size: 1rem;'>Avg. Sales</div>
+                            <div style='font-size: 2rem; color: #6EC6BF;'>
+                                {format_curr_short(avg_sales, currency='BRL', locale='pt_BR')}
+                            </div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
 
         with kpi3:
-            with st.container(border=True, horizontal_alignment="center", vertical_alignment="top"):
+            with st.container(horizontal_alignment="center", vertical_alignment="top"):
                 total_orders = filtered_df['order_id'].value_counts().sum()
                 st.markdown(f"""
-                    <div style='text-align: center;'> 
-                        <div style='font-size: 1rem;'>Total Orders</div>
-                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{total_orders}</div>
+                    <div class="kpi-card">
+                        <div style='text-align: center;'> 
+                            <div style='font-size: 1rem;'>Total Orders</div>
+                            <div style='font-size: 2rem; color: #6EC6BF;'>
+                                {total_orders}
+                            </div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
 
         with kpi4:
-            with st.container(border=True, horizontal_alignment="center", vertical_alignment="center"):
+            with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 num_customer = filtered_df['customer_id'].nunique()
                 order_per_cus = total_orders / num_customer
                 st.markdown(f"""
-                    <div style='text-align: center;'> 
-                        <div style='font-size: 1rem;'>Avg. Order per Customer</div>
-                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{order_per_cus:0.1f}</div>
+                    <div class="kpi-card">
+                        <div style='text-align: center;'> 
+                            <div style='font-size: 1rem;'>Avg. Order per Customer</div>
+                            <div style='font-size: 2rem; color: #6EC6BF;'>
+                                {order_per_cus:0.1f}
+                            </div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
 
@@ -425,46 +454,62 @@ with sales_page:
         kpi5, kpi6, kpi7, kpi8 = st.columns(4)
 
         with kpi5:
-            with st.container(border=True):
+            with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 delivery_success_rate = (filtered_df['order_status'] == 'delivered').mean() * 100
                 st.markdown(f"""
-                    <div style='text-align: center;'> 
-                        <div style='font-size: 1rem;'>Delivery Success Rate</div>
-                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{delivery_success_rate:.2f}%</div>
+                    <div class="kpi-card">
+                        <div style='text-align: center;'> 
+                            <div style='font-size: 1rem;'>Delivery Success Rate</div>
+                            <div style='font-size: 2rem; color: #6EC6BF;'>
+                                {delivery_success_rate:.2f}%
+                            </div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
 
         with kpi6:
-            with st.container(border=True):
+            with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 filtered_df['days_to_delivered'] = (filtered_df['order_delivered_customer_date'] - filtered_df['order_purchase_timestamp']).dt.days
                 avg_delivery_days = filtered_df['days_to_delivered'].mean()
                 st.markdown(f"""
-                    <div style='text-align: center;'> 
-                        <div style='font-size: 1rem;'>Avg. Delivery Days</div>
-                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{avg_delivery_days:.0f}</div>
+                    <div class="kpi-card">
+                        <div style='text-align: center;'> 
+                            <div style='font-size: 1rem;'>Avg. Delivery Days</div>
+                            <div style='font-size: 2rem; color: #6EC6BF;'>
+                                {avg_delivery_days:.0f}
+                            </div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
 
         with kpi7:
-            with st.container(border=True):
+            with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 filtered_df['estimated_delivery_days'] = (filtered_df['order_estimated_delivery_date'] - filtered_df['order_purchase_timestamp']).dt.days
                 filtered_df['delivery_performance'] = (filtered_df['estimated_delivery_days'] - filtered_df['days_to_delivered']).apply(lambda x: 'Early' if x > 0 else ('On-Time' if x == 0 else 'Late'))
                 delivery_late_rate = ((filtered_df['delivery_performance'] == 'Late').sum()) / len(filtered_df['delivery_performance']) * 100
 
                 st.markdown(f"""
-                    <div style='text-align: center;'> 
-                        <div style='font-size: 1rem;'>Delivery Late Rate</div>
-                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{delivery_late_rate:.2f}% </div>
+                    <div class="kpi-card">
+                        <div style='text-align: center;'> 
+                            <div style='font-size: 1rem;'>Delivery Late Rate</div>
+                            <div style='font-size: 2rem; color: #6EC6BF;'>
+                                {delivery_late_rate:.2f}% 
+                            </div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
 
         with kpi8:
-            with st.container(border=True):
+            with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 avg_review = filtered_df['review_score'].mean()
                 st.markdown(f"""
-                    <div style='text-align: center;'> 
-                        <div style='font-size: 1rem;'>Avg. Rating</div>
-                        <div style='font-size: 1.5rem; color: #6EC6BF;'>{avg_review:.2f}</div>
+                    <div class="kpi-card">
+                        <div style='text-align: center;'> 
+                            <div style='font-size: 1rem;'>Avg. Rating</div>
+                            <div style='font-size: 2rem; color: #6EC6BF;'>
+                                {avg_review:.2f}
+                            </div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
 
