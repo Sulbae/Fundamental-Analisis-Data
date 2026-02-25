@@ -52,7 +52,7 @@ def load_users_data(customers_path, sellers_path):
 
 ## Load data
 sales_data_df = load_sales_data('sales_data.csv')
-customers_df, sellers_df = load_users_data('customers_geo.csv', 'sellers_geo.csv')
+customers_df, sellers_df = load_users_data('customers_data.csv', 'sellers_data.csv')
 
 # DASHBOARD UI ----------
 st.markdown(
@@ -266,6 +266,115 @@ def plot_product_sales(data_df, ascending=False):
     # Background transparan
     fig.patch.set_alpha(0)
     ax.set_facecolor("none")
+
+    st.pyplot(fig)
+    plt.close(fig)
+
+## Analisis RFM
+def analyze_rfm(df):
+    snapshot_date = df['order_purchase_timestamp'].max() + pd.Timedelta(days=1)
+
+    rfm_df = df.groupby('customer_unique_id').agg({
+        'order_purchase_timestamp': lambda x: (snapshot_date - x.max()).days,
+        'order_id': 'nunique',
+        'payment_value': 'sum'
+    }).reset_index()
+
+    rfm_df.columns = ['customer_unique_id', 'recency', 'frequency', 'monetary']
+
+    # Binning recency
+    rfm_df['cus_status'] = pd.cut(
+        rfm_df['recency'],
+        bins=[-1, 60, 90, 180, float('inf')],
+        labels=['Active', 'Rarely Active', 'Need to Touch', 'Inactive']
+    )
+
+    # Binning frequency
+    rfm_df['cus_activities'] = pd.cut(
+        rfm_df['frequency'],
+        bins=[-1, 0, 5, 10, float('inf')],
+        labels=['Tidak Pernah', 'Jarang', 'Sering', 'Sangat Sering']
+    )
+
+    # Binning monetray
+    rfm_df['cus_value'] = pd.cut(
+        rfm_df['monetary'],
+        bins=[-1, 100, 500, 1000, float('inf')],
+        labels=['Low', 'Middle-Low', 'Middle-High', 'High']
+    )
+    
+    return rfm_df
+
+## Segmentasi Customer based on RFM data
+def create_customer_segment(rfm_df):
+    # Scoring
+    rfm_df['cus_status_score'] = rfm_df['cus_status'].map({'Inactive': 1, 'Need to Touch': 2, 'Rarely Active': 3, 'Active': 4})
+    rfm_df['cus_activities_score'] = rfm_df['cus_activities'].map({'Tidak Pernah': 1, 'Jarang': 2, 'Sering': 3, 'Sangat Sering': 4})
+    rfm_df['cus_value_score'] = rfm_df['cus_value'].map({'Low': 1, 'Middle-Low': 2, 'Middle-High': 3, 'High': 4})
+
+    # Ubah tipe data dari object (hasil binning) ke tipe integer
+    rfm_df['cus_status_score'] = rfm_df['cus_status_score'].astype(int)
+    rfm_df['cus_activities_score'] = rfm_df['cus_activities_score'].astype(int)
+    rfm_df['cus_value_score'] = rfm_df['cus_value_score'].astype(int)
+
+    # Total Score
+    rfm_df['cus_rating'] = (
+        rfm_df['cus_status_score'] * 0.2 +
+        rfm_df['cus_activities_score'] * 0.3 +
+        rfm_df['cus_value_score'] * 0.5
+    )
+
+    def customer_segment(row):
+        if row['cus_rating'] > 3.3:
+            return 'Super'
+        elif row['cus_rating'] > 2.3:
+            return 'Regular'
+        elif row['cus_rating'] > 1.3:
+            return 'Potential'
+        else:
+            return 'Risk'
+    
+    # Buat segmentasi
+    rfm_df['segment'] = rfm_df.apply(customer_segment, axis=1)
+
+    # Tambahkan kolom city dan state dari customers_df
+    rfm_df = pd.merge(
+        left=rfm_df,
+        right=customers_df[['customer_unique_id', 'customer_city', 'customer_state', 'geolocation_lat', 'geolocation_lng']],
+        on='customer_unique_id',
+        how='left',
+        validate='one_to_one'
+    )
+
+    return rfm_df
+
+## Visualisasi Clustering Pie Chart
+def plot_cluster_customers(rfm_df):
+
+    segment_counts = rfm_df['segment'].value_counts()
+
+    fig, ax = plt.subplots(figsize=(12, 5))
+
+    pie = ax.pie(
+        x=segment_counts.values,
+        labels=segment_counts.index,
+        autopct='%1.1f%%'
+    )
+
+    st.pyplot(fig)
+    plt.close(fig)
+
+## Visualisasi profile cluster based on RFM data
+def plot_cluster_profile(rfm_df):
+    cluster_profile = rfm_df.groupby('segment')[[
+        'recency', 'frequency', 'monetary'
+    ]].mean()
+
+    fig, ax = plt.subplots()
+
+    cluster_profile.plot(kind='bar', ax=ax)
+
+    ax.set_ylabel('Rata-rata')
 
     st.pyplot(fig)
     plt.close(fig)
@@ -563,13 +672,13 @@ with users_page:
 
         with kpi_users_1:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                total_customers = (filtered_df['customer_unique_id'] == 'delivered').mean() * 100
+                total_customers = (filtered_df['customer_unique_id'].nunique())
                 st.markdown(f"""
                     <div class="kpi-card">
                         <div style='text-align: center;'> 
                             <div style='font-size: 1rem;'>Total Customers</div>
                             <div style='font-size: 2rem; color: #6EC6BF;'>
-                                {delivery_success_rate:.2f}%
+                                {total_customers}
                             </div>
                         </div>
                     </div>
@@ -577,49 +686,35 @@ with users_page:
 
         with kpi_users_2:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                filtered_df['days_to_delivered'] = (filtered_df['order_delivered_customer_date'] - filtered_df['order_purchase_timestamp']).dt.days
-                avg_delivery_days = filtered_df['days_to_delivered'].mean()
+                total_sellers = (filtered_df['seller_id'].nunique())
                 st.markdown(f"""
                     <div class="kpi-card">
                         <div style='text-align: center;'> 
-                            <div style='font-size: 1rem;'>Avg. Delivery Days</div>
+                            <div style='font-size: 1rem;'>Total Sellers</div>
                             <div style='font-size: 2rem; color: #6EC6BF;'>
-                                {avg_delivery_days:.0f}
+                                {total_sellers}
                             </div>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
 
-        with kpi_users_3:
-            with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                filtered_df['estimated_delivery_days'] = (filtered_df['order_estimated_delivery_date'] - filtered_df['order_purchase_timestamp']).dt.days
-                filtered_df['delivery_performance'] = (filtered_df['estimated_delivery_days'] - filtered_df['days_to_delivered']).apply(lambda x: 'Early' if x > 0 else ('On-Time' if x == 0 else 'Late'))
-                delivery_late_rate = ((filtered_df['delivery_performance'] == 'Late').sum()) / len(filtered_df['delivery_performance']) * 100
+    ## Tampilkan chart RFM dan Clustering
+    col1, col2 = st.columns(2)
+    
+    ### Hitung RFM
+    rfm_df = analyze_rfm(filtered_df)
+    ### Clustering
+    create_customer_segment(rfm_df)
 
-                st.markdown(f"""
-                    <div class="kpi-card">
-                        <div style='text-align: center;'> 
-                            <div style='font-size: 1rem;'>Delivery Late Rate</div>
-                            <div style='font-size: 2rem; color: #6EC6BF;'>
-                                {delivery_late_rate:.2f}% 
-                            </div>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+    with col1:
+        with st.container():
+            st.subheader("Profil Customer")
+            plot_cluster_customers(rfm_df)
 
-        with kpi_users_4:
-            with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                avg_review = filtered_df['review_score'].mean()
-                st.markdown(f"""
-                    <div class="kpi-card">
-                        <div style='text-align: center;'> 
-                            <div style='font-size: 1rem;'>Avg. Rating</div>
-                            <div style='font-size: 2rem; color: #6EC6BF;'>
-                                {avg_review:.2f}
-                            </div>
-                        </div>
-                    </div>
-                """, unsafe_allow_html=True)
+    with col2:
+        with st.container():
+            st.subheader("RFM Customer")
+            plot_cluster_profile(rfm_df)
 
     ## Tampilkan peta persebaran lokasi users
     with st.container(border=True):
