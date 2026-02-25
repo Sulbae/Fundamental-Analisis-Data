@@ -450,7 +450,7 @@ with sales_page:
 
         with kpi_sales_5:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                delivery_success_rate = (filtered_df['order_status'] == 'delivered').mean() * 100
+                delivery_success_rate = ((filtered_df['order_status'] == 'delivered').sum() / len(filtered_df['order_status']) * 100)
                 st.markdown(f"""
                     <div class="kpi-card">
                         <div style='text-align: center;'> 
