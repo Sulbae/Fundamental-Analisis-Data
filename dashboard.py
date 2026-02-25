@@ -271,10 +271,11 @@ def plot_product_sales(data_df, ascending=False):
     plt.close(fig)
 
 ## Analisis RFM
-def analyze_rfm(df):
-    snapshot_date = df['order_purchase_timestamp'].max() + pd.Timedelta(days=1)
+@st.cache_data
+def analyze_rfm(data_df):
+    snapshot_date = data_df['order_purchase_timestamp'].max() + pd.Timedelta(days=1)
 
-    rfm_df = df.groupby('customer_unique_id').agg({
+    rfm_df = data_df.groupby('customer_unique_id').agg({
         'order_purchase_timestamp': lambda x: (snapshot_date - x.max()).days,
         'order_id': 'nunique',
         'payment_value': 'sum'
@@ -306,6 +307,7 @@ def analyze_rfm(df):
     return rfm_df
 
 ## Segmentasi Customer based on RFM data
+@st.cache_data
 def create_customer_segment(rfm_df):
     # Scoring
     rfm_df['cus_status_score'] = rfm_df['cus_status'].map({'Inactive': 1, 'Need to Touch': 2, 'Rarely Active': 3, 'Active': 4})
@@ -338,49 +340,104 @@ def create_customer_segment(rfm_df):
     rfm_df['segment'] = rfm_df.apply(customer_segment, axis=1)
 
     # Tambahkan kolom city dan state dari customers_df
-    rfm_df = pd.merge(
+    cus_seg_df = pd.merge(
         left=rfm_df,
         right=customers_df[['customer_unique_id', 'customer_city', 'customer_state', 'geolocation_lat', 'geolocation_lng']],
         on='customer_unique_id',
         how='left',
-        validate='one_to_one'
+        validate='one_to_many'
     )
 
-    return rfm_df
+    return cus_seg_df
 
-## Visualisasi Clustering Pie Chart
-def plot_cluster_customers(rfm_df):
-
-    segment_counts = rfm_df['segment'].value_counts()
-
-    fig, ax = plt.subplots(figsize=(12, 5))
-
-    pie = ax.pie(
-        x=segment_counts.values,
-        labels=segment_counts.index,
-        autopct='%1.1f%%'
+## Visualisasi Distribusi Cluster
+def plot_cluster_customers(data_df):
+    data = (
+        data_df
+        .groupby('segment')
+        .size()
+        .reset_index(name='jumlah')
+        .sort_values(by='jumlah')
+        .head(5)
     )
+
+    fig, ax = plt.subplots(figsize=(10, 4))
+    
+    colors = ["#6EC6BF", "#D3D3D3", "#FFA500", "#F50505"]
+
+    sns.barplot(
+        data=data,
+        x='segment',
+        y='jumlah',
+        palette=colors,
+        ax=ax
+    )
+
+    ax.set_xlabel('Profil Customer', fontsize=12, fontweight='bold', color='white')
+    ax.set_ylabel('Jumlah Customer', fontsize=12, fontweight='bold', color='white')
+    ax.tick_params(axis='x', colors='white')
+    ax.tick_params(axis='y', colors='white')
+
+    plt.tight_layout()
+    plt.grid(False)
+    
+    # Background transparan
+    fig.patch.set_alpha(0)
+    ax.set_facecolor("none")
 
     st.pyplot(fig)
     plt.close(fig)
 
-## Visualisasi profile cluster based on RFM data
-def plot_cluster_profile(rfm_df):
-    cluster_profile = rfm_df.groupby('segment')[[
-        'recency', 'frequency', 'monetary'
-    ]].mean()
+## Visualisasi customer's top city
+def plot_customer_top_city(data_df):
+    data = (
+        data_df
+        .groupby(['customer_city', 'segment'])
+        .size()
+        .reset_index(name='jumlah')
+    )
 
-    fig, ax = plt.subplots()
+    top_city = (
+        data_df
+        .groupby('customer_city')
+        .size()
+        .sort_values(ascending=False)
+        .head(5).index
+    )
 
-    cluster_profile.plot(kind='bar', ax=ax)
+    data = data[data['customer_city'].isin(top_city)]
 
-    ax.set_ylabel('Rata-rata')
+    fig, ax = plt.subplots(figsize=(10, 4))
+    
+    colors = ["#6EC6BF", "#D3D3D3", "#FFA500", "#F50505"]
+
+    sns.barplot(
+        data=data,
+        x='customer_city',
+        y='jumlah',
+        hue='segment',
+        palette=colors,
+        ax=ax
+    )
+
+    ax.set_xlabel('Kota', fontsize=12, fontweight='bold', color='white')
+    ax.set_ylabel('Jumlah Customer', fontsize=12, fontweight='bold', color='white')
+    ax.tick_params(axis='x', colors='white')
+    ax.tick_params(axis='y', colors='white')
+
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.grid(False)
+    
+    # Background transparan
+    fig.patch.set_alpha(0)
+    ax.set_facecolor("none")
 
     st.pyplot(fig)
     plt.close(fig)
 
 ## Peta distribusi lokasi users
-@st.cache_data()
+@st.cache_data
 def plot_users_map(customers_df, sellers_df):
     
     # Customer Layer
@@ -404,7 +461,7 @@ def plot_users_map(customers_df, sellers_df):
         "ScatterplotLayer",
         data=sellers_df,
         get_position='[geolocation_lng, geolocation_lat]',
-        get_fill_color=[255, 107, 0],
+        get_fill_color=[255, 165, 0],
         get_radius=3000,
         opacity=0.1,
         pickable=True,
@@ -666,9 +723,9 @@ with users_page:
 
     # Tampilkan KPI Users
     with st.container():
-        st.subheader("Kinerja Layanan", text_alignment="center")
+        st.subheader("Ringkasan Users", text_alignment="center")
         ## Layout untuk menampilkan metrik
-        kpi_users_1, kpi_users_2, kpi_users_3, kpi_users_4 = st.columns(4)
+        kpi_users_0_spc, kpi_users_1, kpi_users_2, kpi_users_3_spc= st.columns([1, 1, 1, 1])
 
         with kpi_users_1:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
@@ -704,17 +761,17 @@ with users_page:
     ### Hitung RFM
     rfm_df = analyze_rfm(filtered_df)
     ### Clustering
-    create_customer_segment(rfm_df)
+    cus_seg_df = create_customer_segment(rfm_df)
 
     with col1:
         with st.container():
             st.subheader("Profil Customer")
-            plot_cluster_customers(rfm_df)
+            plot_cluster_customers(cus_seg_df)
 
     with col2:
         with st.container():
-            st.subheader("RFM Customer")
-            plot_cluster_profile(rfm_df)
+            st.subheader("Top Cities")
+            plot_customer_top_city(cus_seg_df)
 
     ## Tampilkan peta persebaran lokasi users
     with st.container(border=True):
