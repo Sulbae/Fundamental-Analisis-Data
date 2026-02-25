@@ -8,23 +8,17 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import geopandas as gpd
-import geodatasets
-from scipy.stats import gaussian_kde
-import folium
 import pydeck as pdk
-from folium.plugins import HeatMap, MarkerCluster
-from streamlit_folium import st_folium
 from babel.numbers import format_currency, get_currency_symbol
 from matplotlib.ticker import FuncFormatter
 
 sns.set_style("white")
 
 # PENGOLAHAN DATA ----------
-## sales data
+## Dataset
 @st.cache_data
-def load_sales_data(data_path):
-    sales_data_df = pd.read_csv(data_path)
+def load_dataset(data_path):
+    data_df = pd.read_csv(data_path)
 
     datetime_columns = [
         "order_purchase_timestamp",
@@ -36,23 +30,18 @@ def load_sales_data(data_path):
     ]
 
     for col in datetime_columns:
-        sales_data_df[col] = pd.to_datetime(sales_data_df[col], errors='coerce')
+        if col in data_df.columns:
+            data_df[col] = pd.to_datetime(data_df[col], errors='coerce')
+                
+    if "order_purchase_timestamp" in data_df.columns:
+        data_df = data_df.sort_values(by='order_purchase_timestamp')
 
-    sales_data_df.sort_values(by='order_purchase_timestamp', inplace=True)
-
-    return sales_data_df
-
-## users data
-@st.cache_data
-def load_users_data(customers_path, sellers_path):
-    customers_df = pd.read_csv(customers_path)
-    sellers_df = pd.read_csv(sellers_path)
-
-    return customers_df, sellers_df
+    return data_df
 
 ## Load data
-sales_data_df = load_sales_data('sales_data.csv')
-customers_df, sellers_df = load_users_data('customers_data.csv', 'sellers_data.csv')
+sales_data_df = load_dataset('sales_data.csv')
+customers_df = load_dataset('customers_data.csv')
+sellers_df = load_dataset('sellers_data.csv')
 
 # DASHBOARD UI ----------
 st.markdown(
@@ -143,9 +132,19 @@ with st.container():
             st.stop()
 
 ## Simpan data terfilter yang akan digunakan
-filtered_df = sales_data_df[
+filtered_sales_df = sales_data_df[
     (sales_data_df['order_purchase_timestamp'].dt.date >= start_date) & 
     (sales_data_df['order_purchase_timestamp'].dt.date <= end_date)
+].copy()
+
+filtered_customers_df = customers_df[
+    (customers_df['order_purchase_timestamp'].dt.date >= start_date) & 
+    (customers_df['order_purchase_timestamp'].dt.date <= end_date)
+].copy()
+
+filtered_sellers_df = sellers_df[
+    (sellers_df['order_purchase_timestamp'].dt.date >= start_date) & 
+    (sellers_df['order_purchase_timestamp'].dt.date <= end_date)
 ].copy()
 
 
@@ -198,7 +197,7 @@ def create_sales_trend_df(df, periode: str):
     return sales_trend_df
 
 ## Formating angka y_axis tren penjualan
-def y_axis_formatter(x, pos):
+def axis_formatter(x, pos):
     if x >= 1_000_000_000:
         return f"{x / 1_000_000_000:.1f}B"
     elif x >= 1_000_000:
@@ -216,7 +215,7 @@ def sales_trend_viz(x, y, xlabel: str):
     ax.set_xlabel(xlabel, fontweight='bold', color='white')
     ax.set_ylabel('Total Penjualan', fontweight='bold', color='white')
 
-    ax.yaxis.set_major_formatter(FuncFormatter(y_axis_formatter))
+    ax.yaxis.set_major_formatter(FuncFormatter(axis_formatter))
     ax.tick_params(axis='x', colors='white')
     ax.tick_params(axis='y', colors='white')
 
@@ -255,6 +254,7 @@ def plot_product_sales(data_df, ascending=False):
         ax=ax
     )
 
+    ax.xaxis.set_major_formatter(FuncFormatter(axis_formatter))
     ax.set_xlabel('Jumlah Terjual', fontsize=12, fontweight='bold', color='white')
     ax.set_ylabel('Kategori Produk', fontsize=12, fontweight='bold', color='white')
     ax.tick_params(axis='x', colors='white')
@@ -341,11 +341,10 @@ def create_customer_segment(rfm_df):
 
     # Tambahkan kolom city dan state dari customers_df
     cus_seg_df = pd.merge(
-        left=rfm_df,
-        right=customers_df[['customer_unique_id', 'customer_city', 'customer_state', 'geolocation_lat', 'geolocation_lng']],
+        left=filtered_customers_df[['customer_unique_id', 'customer_city', 'customer_state']],
+        right= rfm_df,
         on='customer_unique_id',
-        how='left',
-        validate='one_to_many'
+        how='left'
     )
 
     return cus_seg_df
@@ -357,22 +356,28 @@ def plot_cluster_customers(data_df):
         .groupby('segment')
         .size()
         .reset_index(name='jumlah')
-        .sort_values(by='jumlah')
+        .sort_values(by='jumlah', ascending=False)
         .head(5)
     )
 
     fig, ax = plt.subplots(figsize=(10, 4))
     
-    colors = ["#6EC6BF", "#D3D3D3", "#FFA500", "#F50505"]
+    segment_colors = {
+        'Super': "#6EC6BF",
+        'Regular': "#D3D3D3",
+        'Potential': "#FFA500",
+        'Risk': "#F50505"
+    }
 
     sns.barplot(
         data=data,
         x='segment',
         y='jumlah',
-        palette=colors,
+        palette=segment_colors,
         ax=ax
     )
 
+    ax.yaxis.set_major_formatter(FuncFormatter(axis_formatter))
     ax.set_xlabel('Profil Customer', fontsize=12, fontweight='bold', color='white')
     ax.set_ylabel('Jumlah Customer', fontsize=12, fontweight='bold', color='white')
     ax.tick_params(axis='x', colors='white')
@@ -395,6 +400,7 @@ def plot_customer_top_city(data_df):
         .groupby(['customer_city', 'segment'])
         .size()
         .reset_index(name='jumlah')
+        .sort_values(by='jumlah', ascending=False)
     )
 
     top_city = (
@@ -409,23 +415,29 @@ def plot_customer_top_city(data_df):
 
     fig, ax = plt.subplots(figsize=(10, 4))
     
-    colors = ["#6EC6BF", "#D3D3D3", "#FFA500", "#F50505"]
+    segment_colors = {
+        'Super': "#6EC6BF",
+        'Regular': "#D3D3D3",
+        'Potential': "#FFA500",
+        'Risk': "#F50505"
+    }
 
     sns.barplot(
         data=data,
         x='customer_city',
         y='jumlah',
         hue='segment',
-        palette=colors,
+        palette=segment_colors,
         ax=ax
     )
 
+    ax.yaxis.set_major_formatter(FuncFormatter(axis_formatter))
     ax.set_xlabel('Kota', fontsize=12, fontweight='bold', color='white')
     ax.set_ylabel('Jumlah Customer', fontsize=12, fontweight='bold', color='white')
     ax.tick_params(axis='x', colors='white')
     ax.tick_params(axis='y', colors='white')
 
-    plt.xticks(rotation=45)
+    plt.xticks(rotation=10)
     plt.tight_layout()
     plt.grid(False)
     
@@ -439,11 +451,24 @@ def plot_customer_top_city(data_df):
 ## Peta distribusi lokasi users
 @st.cache_data
 def plot_users_map(customers_df, sellers_df):
-    
+    # Customer data
+    customers_map = (
+        customers_df[['geolocation_lng', 'geolocation_lat']]
+        .dropna()
+        .copy()
+    )
+
+    # Seller data
+    sellers_map = (
+        sellers_df[['geolocation_lng', 'geolocation_lat']]
+        .dropna()
+        .copy()
+    )
+
     # Customer Layer
     customer_layer = pdk.Layer(
         "HexagonLayer",
-        data=customers_df,
+        data=customers_map,
         get_position='[geolocation_lng, geolocation_lat]',
         radius=10_000,
         extruded=False,
@@ -459,7 +484,7 @@ def plot_users_map(customers_df, sellers_df):
     # Seller Layer
     seller_layer = pdk.Layer(
         "ScatterplotLayer",
-        data=sellers_df,
+        data=sellers_map,
         get_position='[geolocation_lng, geolocation_lat]',
         get_fill_color=[255, 165, 0],
         get_radius=3000,
@@ -554,7 +579,7 @@ with sales_page:
 
         with kpi_sales_1:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                total_sales = filtered_df['payment_value'].sum()
+                total_sales = filtered_sales_df['payment_value'].sum()
                 st.markdown(f"""
                     <div class="kpi-card">
                         <div style='text-align: center;'> 
@@ -568,7 +593,7 @@ with sales_page:
 
         with kpi_sales_2:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                avg_sales = filtered_df['payment_value'].mean()
+                avg_sales = filtered_sales_df['payment_value'].mean()
                 st.markdown(f"""
                     <div class="kpi-card">    
                         <div style='text-align: center;'> 
@@ -582,7 +607,7 @@ with sales_page:
 
         with kpi_sales_3:
             with st.container(horizontal_alignment="center", vertical_alignment="top"):
-                total_orders = filtered_df['order_id'].value_counts().sum()
+                total_orders = filtered_sales_df['order_id'].value_counts().sum()
                 st.markdown(f"""
                     <div class="kpi-card">
                         <div style='text-align: center;'> 
@@ -596,7 +621,7 @@ with sales_page:
 
         with kpi_sales_4:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                num_customer = filtered_df['customer_id'].nunique()
+                num_customer = filtered_sales_df['customer_id'].nunique()
                 order_per_cus = total_orders / num_customer
                 st.markdown(f"""
                     <div class="kpi-card">
@@ -616,7 +641,7 @@ with sales_page:
 
         with kpi_sales_5:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                delivery_success_rate = ((filtered_df['order_status'] == 'delivered').sum() / len(filtered_df['order_status']) * 100)
+                delivery_success_rate = ((filtered_sales_df['order_status'] == 'delivered').sum() / len(filtered_sales_df['order_status']) * 100)
                 st.markdown(f"""
                     <div class="kpi-card">
                         <div style='text-align: center;'> 
@@ -630,8 +655,8 @@ with sales_page:
 
         with kpi_sales_6:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                filtered_df['days_to_delivered'] = (filtered_df['order_delivered_customer_date'] - filtered_df['order_purchase_timestamp']).dt.days
-                avg_delivery_days = filtered_df['days_to_delivered'].mean()
+                filtered_sales_df['days_to_delivered'] = (filtered_sales_df['order_delivered_customer_date'] - filtered_sales_df['order_purchase_timestamp']).dt.days
+                avg_delivery_days = filtered_sales_df['days_to_delivered'].mean()
                 st.markdown(f"""
                     <div class="kpi-card">
                         <div style='text-align: center;'> 
@@ -645,9 +670,9 @@ with sales_page:
 
         with kpi_sales_7:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                filtered_df['estimated_delivery_days'] = (filtered_df['order_estimated_delivery_date'] - filtered_df['order_purchase_timestamp']).dt.days
-                filtered_df['delivery_performance'] = (filtered_df['estimated_delivery_days'] - filtered_df['days_to_delivered']).apply(lambda x: 'Early' if x > 0 else ('On-Time' if x == 0 else 'Late'))
-                delivery_late_rate = ((filtered_df['delivery_performance'] == 'Late').sum()) / len(filtered_df['delivery_performance']) * 100
+                filtered_sales_df['estimated_delivery_days'] = (filtered_sales_df['order_estimated_delivery_date'] - filtered_sales_df['order_purchase_timestamp']).dt.days
+                filtered_sales_df['delivery_performance'] = (filtered_sales_df['estimated_delivery_days'] - filtered_sales_df['days_to_delivered']).apply(lambda x: 'Early' if x > 0 else ('On-Time' if x == 0 else 'Late'))
+                delivery_late_rate = ((filtered_sales_df['delivery_performance'] == 'Late').sum()) / len(filtered_sales_df['delivery_performance']) * 100
 
                 st.markdown(f"""
                     <div class="kpi-card">
@@ -662,7 +687,7 @@ with sales_page:
 
         with kpi_sales_8:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                avg_review = filtered_df['review_score'].mean()
+                avg_review = filtered_sales_df['review_score'].mean()
                 st.markdown(f"""
                     <div class="kpi-card">
                         <div style='text-align: center;'> 
@@ -681,22 +706,22 @@ with sales_page:
     
     ### Tab 1: Tren Tahunan
     with tab1:
-        yearly_sales_df = create_sales_trend_df(filtered_df, periode='Y')
+        yearly_sales_df = create_sales_trend_df(filtered_sales_df, periode='Y')
         sales_trend_viz(yearly_sales_df['order_purchase_timestamp'], yearly_sales_df['total_sales'], xlabel="Tahun")
 
     ### Tab 2: Tren Quarterly
     with tab2:
-        quarterly_sales_df = create_sales_trend_df(filtered_df, periode='Q')
+        quarterly_sales_df = create_sales_trend_df(filtered_sales_df, periode='Q')
         sales_trend_viz(quarterly_sales_df['order_purchase_timestamp'], quarterly_sales_df['total_sales'], xlabel="Quarter")
 
     ### Tab 3: Tren Bulanan
     with tab3:
-        monthly_sales_df = create_sales_trend_df(filtered_df, periode='M')
+        monthly_sales_df = create_sales_trend_df(filtered_sales_df, periode='M')
         sales_trend_viz(monthly_sales_df['order_purchase_timestamp'], monthly_sales_df['total_sales'], xlabel="Bulan")
 
     ### Tab 3: Tren Bulanan
     with tab4:
-        weekly_sales_df = create_sales_trend_df(filtered_df, periode='W')
+        weekly_sales_df = create_sales_trend_df(filtered_sales_df, periode='W')
         sales_trend_viz(weekly_sales_df['order_purchase_timestamp'], weekly_sales_df['total_sales'], xlabel="Minggu")
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -705,17 +730,17 @@ with sales_page:
 
     with col1:
         with st.container():
-            st.subheader("👍 Produk Terlaris")
+            st.subheader("Produk Terlaris 👍")
             plot_product_sales(
-                data_df=filtered_df,
+                data_df=filtered_sales_df,
                 ascending=False
             )
 
     with col2:
         with st.container():
-            st.subheader("👎 Produk Kurang Laris")
+            st.subheader("Produk Kurang Laris 👎")
             plot_product_sales(
-                data_df=filtered_df,
+                data_df=filtered_sales_df,
                 ascending=True
             )
 # Halaman Users: Customers & Sellers
@@ -729,7 +754,7 @@ with users_page:
 
         with kpi_users_1:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                total_customers = (filtered_df['customer_unique_id'].nunique())
+                total_customers = (filtered_customers_df['customer_unique_id'].nunique())
                 st.markdown(f"""
                     <div class="kpi-card">
                         <div style='text-align: center;'> 
@@ -743,7 +768,7 @@ with users_page:
 
         with kpi_users_2:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
-                total_sellers = (filtered_df['seller_id'].nunique())
+                total_sellers = (filtered_sellers_df['seller_id'].nunique())
                 st.markdown(f"""
                     <div class="kpi-card">
                         <div style='text-align: center;'> 
@@ -759,7 +784,7 @@ with users_page:
     col1, col2 = st.columns(2)
     
     ### Hitung RFM
-    rfm_df = analyze_rfm(filtered_df)
+    rfm_df = analyze_rfm(filtered_customers_df)
     ### Clustering
     cus_seg_df = create_customer_segment(rfm_df)
 
@@ -770,14 +795,14 @@ with users_page:
 
     with col2:
         with st.container():
-            st.subheader("Top Cities")
+            st.subheader("Customer per Kota")
             plot_customer_top_city(cus_seg_df)
 
     ## Tampilkan peta persebaran lokasi users
     with st.container(border=True):
         st.subheader("🌎 Persebaran Lokasi Users", text_alignment="center")
 
-        deck = plot_users_map(customers_df, sellers_df)
+        deck = plot_users_map(filtered_customers_df, filtered_sellers_df)
         st.pydeck_chart(deck)
 
         st.markdown("""
