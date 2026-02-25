@@ -56,7 +56,7 @@ customers_df, sellers_df = load_users_data('customers_geo.csv', 'sellers_geo.csv
 
 # DASHBOARD UI ----------
 st.markdown(
-    "<h1 style='text-align: center; font-size: 3.5rem;'>Dashboard Penjualan E-Commerce</h1>", 
+    "<h1 style='text-align: center; font-size: 3.5rem;'>Dashboard E-Commerce OB</h1>", 
     unsafe_allow_html=True
 )
 
@@ -365,27 +365,28 @@ button[data-baseweb="tab"]:hover {
 
 sales_page, users_page = st.tabs(["Sales Page", "Users Page"])
 
+st.markdown("""
+<style>
+
+.kpi-card {
+    background: linear-gradient(#262730);
+    padding: 0.5rem;
+    border-radius: 5px;
+    border: 1px solid white;
+    box-shadow: 0 0 10px grey;
+    transition: all 0.25s ease;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # Halaman Sales
 with sales_page:
-    st.markdown("""
-    <style>
-
-    .kpi-card {
-        background: linear-gradient(#262730);
-        padding: 0.5rem;
-        border-radius: 5px;
-        border: 1px solid white;
-        box-shadow: 0 0 10px grey;
-        transition: all 0.25s ease;
-    }
-    </style>
-    """, unsafe_allow_html=True)
     with st.container():
         st.subheader("Ringkasan Transaksi", text_alignment="center")
         ## Layout untuk menampilkan metrik
-        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        kpi_sales_1, kpi_sales_2, kpi_sales_3, kpi_sales_4 = st.columns(4)
 
-        with kpi1:
+        with kpi_sales_1:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 total_sales = filtered_df['payment_value'].sum()
                 st.markdown(f"""
@@ -399,7 +400,7 @@ with sales_page:
                     </div>
                 """, unsafe_allow_html=True)
 
-        with kpi2:
+        with kpi_sales_2:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 avg_sales = filtered_df['payment_value'].mean()
                 st.markdown(f"""
@@ -413,7 +414,7 @@ with sales_page:
                     </div>
                 """, unsafe_allow_html=True)
 
-        with kpi3:
+        with kpi_sales_3:
             with st.container(horizontal_alignment="center", vertical_alignment="top"):
                 total_orders = filtered_df['order_id'].value_counts().sum()
                 st.markdown(f"""
@@ -427,7 +428,7 @@ with sales_page:
                     </div>
                 """, unsafe_allow_html=True)
 
-        with kpi4:
+        with kpi_sales_4:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 num_customer = filtered_df['customer_id'].nunique()
                 order_per_cus = total_orders / num_customer
@@ -445,9 +446,9 @@ with sales_page:
     with st.container():
         st.subheader("Kinerja Layanan", text_alignment="center")
         ## Layout untuk menampilkan metrik
-        kpi5, kpi6, kpi7, kpi8 = st.columns(4)
+        kpi_sales_5, kpi_sales_6, kpi_sales_7, kpi_sales_8 = st.columns(4)
 
-        with kpi5:
+        with kpi_sales_5:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 delivery_success_rate = (filtered_df['order_status'] == 'delivered').mean() * 100
                 st.markdown(f"""
@@ -461,7 +462,7 @@ with sales_page:
                     </div>
                 """, unsafe_allow_html=True)
 
-        with kpi6:
+        with kpi_sales_6:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 filtered_df['days_to_delivered'] = (filtered_df['order_delivered_customer_date'] - filtered_df['order_purchase_timestamp']).dt.days
                 avg_delivery_days = filtered_df['days_to_delivered'].mean()
@@ -476,7 +477,7 @@ with sales_page:
                     </div>
                 """, unsafe_allow_html=True)
 
-        with kpi7:
+        with kpi_sales_7:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 filtered_df['estimated_delivery_days'] = (filtered_df['order_estimated_delivery_date'] - filtered_df['order_purchase_timestamp']).dt.days
                 filtered_df['delivery_performance'] = (filtered_df['estimated_delivery_days'] - filtered_df['days_to_delivered']).apply(lambda x: 'Early' if x > 0 else ('On-Time' if x == 0 else 'Late'))
@@ -493,7 +494,7 @@ with sales_page:
                     </div>
                 """, unsafe_allow_html=True)
 
-        with kpi8:
+        with kpi_sales_8:
             with st.container(horizontal_alignment="center", vertical_alignment="center"):
                 avg_review = filtered_df['review_score'].mean()
                 st.markdown(f"""
@@ -554,7 +555,73 @@ with sales_page:
 # Halaman Users: Customers & Sellers
 with users_page:
 
-    ## Tampilkan peta distribusi users
+    # Tampilkan KPI Users
+    with st.container():
+        st.subheader("Kinerja Layanan", text_alignment="center")
+        ## Layout untuk menampilkan metrik
+        kpi_users_1, kpi_users_2, kpi_users_3, kpi_users_4 = st.columns(4)
+
+        with kpi_users_1:
+            with st.container(horizontal_alignment="center", vertical_alignment="center"):
+                total_customers = (filtered_df['customer_unique_id'] == 'delivered').mean() * 100
+                st.markdown(f"""
+                    <div class="kpi-card">
+                        <div style='text-align: center;'> 
+                            <div style='font-size: 1rem;'>Total Customers</div>
+                            <div style='font-size: 2rem; color: #6EC6BF;'>
+                                {delivery_success_rate:.2f}%
+                            </div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        with kpi_users_2:
+            with st.container(horizontal_alignment="center", vertical_alignment="center"):
+                filtered_df['days_to_delivered'] = (filtered_df['order_delivered_customer_date'] - filtered_df['order_purchase_timestamp']).dt.days
+                avg_delivery_days = filtered_df['days_to_delivered'].mean()
+                st.markdown(f"""
+                    <div class="kpi-card">
+                        <div style='text-align: center;'> 
+                            <div style='font-size: 1rem;'>Avg. Delivery Days</div>
+                            <div style='font-size: 2rem; color: #6EC6BF;'>
+                                {avg_delivery_days:.0f}
+                            </div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        with kpi_users_3:
+            with st.container(horizontal_alignment="center", vertical_alignment="center"):
+                filtered_df['estimated_delivery_days'] = (filtered_df['order_estimated_delivery_date'] - filtered_df['order_purchase_timestamp']).dt.days
+                filtered_df['delivery_performance'] = (filtered_df['estimated_delivery_days'] - filtered_df['days_to_delivered']).apply(lambda x: 'Early' if x > 0 else ('On-Time' if x == 0 else 'Late'))
+                delivery_late_rate = ((filtered_df['delivery_performance'] == 'Late').sum()) / len(filtered_df['delivery_performance']) * 100
+
+                st.markdown(f"""
+                    <div class="kpi-card">
+                        <div style='text-align: center;'> 
+                            <div style='font-size: 1rem;'>Delivery Late Rate</div>
+                            <div style='font-size: 2rem; color: #6EC6BF;'>
+                                {delivery_late_rate:.2f}% 
+                            </div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+        with kpi_users_4:
+            with st.container(horizontal_alignment="center", vertical_alignment="center"):
+                avg_review = filtered_df['review_score'].mean()
+                st.markdown(f"""
+                    <div class="kpi-card">
+                        <div style='text-align: center;'> 
+                            <div style='font-size: 1rem;'>Avg. Rating</div>
+                            <div style='font-size: 2rem; color: #6EC6BF;'>
+                                {avg_review:.2f}
+                            </div>
+                        </div>
+                    </div>
+                """, unsafe_allow_html=True)
+
+    ## Tampilkan peta persebaran lokasi users
     with st.container(border=True):
         st.subheader("🌎 Persebaran Lokasi Users", text_alignment="center")
 
@@ -562,7 +629,7 @@ with users_page:
         st.pydeck_chart(deck)
 
         st.markdown("""
-            <div style="display:flex; align-items:center; gap:20px; margin-top:10px;">
+            <div style="display:flex; justify-content:center; gap:20px; margin-top:5px; margin-bottom:5px;">
                 <div style="display:flex; align-items:center; gap:5px;">
                     <div style="width:20px; height:20px; background-color:#6EC6BF;"></div>
                     <span>Customer</span>
