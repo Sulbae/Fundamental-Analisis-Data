@@ -475,9 +475,9 @@ def plot_users_map(customers_df, sellers_df):
     if n_points < 1_000:
         radius = 15_000
     elif n_points < 50_000:
-        radius = 10_000
+        radius = 12_000
     else:
-        radius = 8_000
+        radius = 10_000
 
     # Customer Layer
     customer_layer = pdk.Layer(
