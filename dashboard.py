@@ -131,21 +131,21 @@ with st.container():
             st.error("Start Date tidak boleh lebih besar dari End Date!")
             st.stop()
 
-## Simpan data terfilter yang akan digunakan
-filtered_sales_df = sales_data_df[
-    (sales_data_df['order_purchase_timestamp'].dt.date >= start_date) & 
-    (sales_data_df['order_purchase_timestamp'].dt.date <= end_date)
-].copy()
+## Filter data yang akan digunakan
+@st.cache_data
+def filter_data(df):
+    filtered_data_df = df[
+        (df['order_purchase_timestamp'].dt.date >= start_date) & 
+        (df['order_purchase_timestamp'].dt.date <= end_date)
+    ].copy()
 
-filtered_customers_df = customers_df[
-    (customers_df['order_purchase_timestamp'].dt.date >= start_date) & 
-    (customers_df['order_purchase_timestamp'].dt.date <= end_date)
-].copy()
+    return filtered_data_df
 
-filtered_sellers_df = sellers_df[
-    (sellers_df['order_purchase_timestamp'].dt.date >= start_date) & 
-    (sellers_df['order_purchase_timestamp'].dt.date <= end_date)
-].copy()
+filtered_sales_df = filter_data(sales_data_df)
+
+filtered_customers_df = filter_data(customers_df)
+
+filtered_sellers_df = filter_data(sellers_df)
 
 
 # HELPER FUNCTIONS ----------
