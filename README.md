@@ -5,7 +5,7 @@
 2) `conda activate main-ds`
 3) `pip install -r requirements.txt`
 
-## Run Streamlit
+## Run Streamlit App
 `streamlit run dasboard.py`
 
 atau
