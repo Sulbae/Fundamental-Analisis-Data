@@ -135,7 +135,6 @@ python-dateutil
 python-dotenv==1.2.1
 pytz==2024.2
 pytz-deprecation-shim==0.1.0.post0
-pywin32
 PyYAML==6.0.3
 pyzmq 
 querystring-parser==1.2.4
