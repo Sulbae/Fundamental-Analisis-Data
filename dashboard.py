@@ -132,7 +132,6 @@ with st.container():
             st.stop()
 
 ## Filter data yang akan digunakan
-@st.cache_data
 def filter_data(df):
     filtered_data_df = df[
         (df['order_purchase_timestamp'].dt.date >= start_date) & 
@@ -471,12 +470,21 @@ def plot_users_map(customers_df, sellers_df):
         .copy()
     )
 
+    n_points = len(customers_map)
+
+    if n_points < 1_000:
+        radius = 15_000
+    elif n_points < 50_000:
+        radius = 10_000
+    else:
+        radius = 8_000
+
     # Customer Layer
     customer_layer = pdk.Layer(
         "HexagonLayer",
         data=customers_map,
         get_position='[geolocation_lng, geolocation_lat]',
-        radius=10_000,
+        radius=radius,
         extruded=False,
         pickable=True,
         coverage=0.8,
