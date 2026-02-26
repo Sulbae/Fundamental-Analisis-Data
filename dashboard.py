@@ -347,6 +347,13 @@ def create_customer_segment(rfm_df):
         how='left'
     )
 
+    # Pastikan tidak ada null dan duplikat
+    if cus_seg_df.isnull().sum().sum() > 0:
+        cus_seg_df.dropna(inplace=True)
+    
+    if cus_seg_df.duplicated().sum() > 0:
+        cus_seg_df.drop_duplicates(inplace=True)
+
     return cus_seg_df
 
 ## Visualisasi Distribusi Cluster
@@ -357,7 +364,6 @@ def plot_cluster_customers(data_df):
         .size()
         .reset_index(name='jumlah')
         .sort_values(by='jumlah', ascending=False)
-        .head(5)
     )
 
     fig, ax = plt.subplots(figsize=(10, 4))
