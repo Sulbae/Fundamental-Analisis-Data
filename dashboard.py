@@ -704,6 +704,8 @@ with sales_page:
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
+    
+    st.markdown(" ")
 
     ## Visualisasi Tren Penjualan
     st.subheader("📈 Tren Penjualan")
