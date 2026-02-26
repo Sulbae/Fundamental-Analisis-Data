@@ -384,7 +384,7 @@ def plot_cluster_customers(data_df):
     )
 
     ax.yaxis.set_major_formatter(FuncFormatter(axis_formatter))
-    ax.set_xlabel('Profil Customer', fontsize=12, fontweight='bold', color='white')
+    ax.set_xlabel('Segment', fontsize=12, fontweight='bold', color='white')
     ax.set_ylabel('Jumlah Customer', fontsize=12, fontweight='bold', color='white')
     ax.tick_params(axis='x', colors='white')
     ax.tick_params(axis='y', colors='white')
