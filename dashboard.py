@@ -811,7 +811,7 @@ with users_page:
 
     with col2:
         with st.container():
-            st.subheader("Top Kota by Customer")
+            st.subheader("Top Kota by Customers")
             plot_customer_top_city(cus_seg_df)
 
     ## Tampilkan peta persebaran lokasi users
